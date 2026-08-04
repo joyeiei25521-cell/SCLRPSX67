@@ -1,0 +1,1648 @@
+<!DOCTYPE html>
+<html lang="th" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>ระบบจัดการสภานักเรียน | Student Council Management System</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="styles.css?v=20260804-1">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Kanit', 'sans-serif'],
+            english: ['Plus Jakarta Sans', 'sans-serif']
+          },
+          colors: {
+            school: {
+              blue: '#1e3a8a',       // สีน้ำเงินหลักของโรงเรียน
+              yellow: '#facc15',     // สีเหลืองทองหลักของโรงเรียน
+              yellowlight: '#fef08a', // สีเหลืองอ่อนสำหรับจุดเน้น
+              navy: '#0b1329',       // สีกรมท่าสำหรับพื้นหลัง
+              navylight: '#1c2541'   // สีกรมท่าอ่อนสำหรับเมนู/การ์ด
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+
+<body class="h-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 flex flex-col md:flex-row overflow-hidden font-sans">
+
+  <div id="app-toast" class="fixed top-4 right-4 z-[1000] flex flex-col gap-2 w-[min(92vw,360px)] pointer-events-none"></div>
+
+  <!-- Sidebar (ส่วนการนำทาง) -->
+  <aside id="sidebar" class="fixed inset-y-0 left-0 z-50 w-72 text-slate-100 flex flex-col transform -translate-x-full transition-transform duration-300 md:translate-x-0 md:relative md:flex shrink-0 shadow-2xl">
+    <!-- Brand Header -->
+    <div class="h-20 flex items-center justify-between px-6 border-b border-white/10 bg-slate-950/40 backdrop-blur-md">
+      <div class="flex items-center space-x-3">
+        <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-yellow-400 to-amber-500 flex items-center justify-center text-slate-950 font-black text-xl shadow-lg shadow-yellow-400/30">
+          <i class="fa-solid fa-crown text-xl text-slate-900"></i>
+        </div>
+        <div>
+          <span class="font-extrabold text-base tracking-tight block bg-gradient-to-r from-yellow-300 via-yellow-400 to-blue-400 bg-clip-text text-transparent">LRP STUDENT COUNCIL</span>
+          <span class="text-[11px] text-slate-400 block -mt-0.5 font-medium">สภานักเรียนโรงเรียน</span>
+        </div>
+      </div>
+      <!-- Close Sidebar button for mobile -->
+      <button onclick="toggleSidebar()" class="md:hidden text-slate-400 hover:text-white focus:outline-none p-2 rounded-xl hover:bg-white/10 transition">
+        <i class="fa-solid fa-xmark text-xl"></i>
+      </button>
+    </div>
+
+    <!-- User Information Panel inside Sidebar -->
+    <div id="sidebar-user-panel" class="px-5 py-4 mx-4 my-3 border border-white/10 bg-white/5 rounded-2xl hidden backdrop-blur-md">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-yellow-400/20 text-yellow-400 flex items-center justify-center font-bold text-base border border-yellow-400/30">
+          <i class="fa-solid fa-user"></i>
+        </div>
+        <div class="overflow-hidden">
+          <p id="sidebar-user-name" class="font-bold text-sm truncate text-slate-100">ชื่อนักเรียน</p>
+          <span id="sidebar-user-role" class="text-[10px] px-2.5 py-0.5 bg-yellow-400/20 text-yellow-300 rounded-full border border-yellow-400/30 font-bold inline-block mt-0.5">นักเรียน</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Menus -->
+    <nav class="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto">
+      
+      <!-- Public Section -->
+      <div class="pb-2">
+        <span class="px-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">หน้าหลักสาธารณะ</span>
+        <a href="#public-achievements" onclick="switchTab('public-achievements')" class="sidebar-link active flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-slate-800 hover:text-white text-slate-300">
+          <i class="fa-solid fa-chart-line w-5 mr-3 text-blue-400"></i>
+          <span>สรุปผลงานและการแก้ไขปัญหา</span>
+        </a>
+      </div>
+
+      <!-- Student Section -->
+      <div id="sidebar-student-menu" class="pt-2 border-t border-slate-800/80 hidden">
+        <span class="px-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">บริการสำหรับนักเรียน</span>
+        <a href="#student-news" onclick="switchTab('student-news')" class="sidebar-link flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-slate-800 hover:text-white text-slate-300">
+          <i class="fa-regular fa-newspaper w-5 mr-3 text-blue-400"></i>
+          <span>ข่าวสารและประกาศ</span>
+        </a>
+        <a href="#student-links" onclick="switchTab('student-links')" class="sidebar-link flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-slate-800 hover:text-white text-slate-300">
+          <i class="fa-solid fa-link w-5 mr-3 text-blue-400"></i>
+          <span>ศูนย์รวมลิงก์สำคัญ</span>
+        </a>
+        <a href="#student-report" onclick="switchTab('student-report')" class="sidebar-link flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-slate-800 hover:text-white text-slate-300">
+          <i class="fa-solid fa-circle-exclamation w-5 mr-3 text-blue-400"></i>
+          <span>แจ้งปัญหากิจการโรงเรียน</span>
+        </a>
+        <a href="#student-chat" onclick="switchTab('student-chat')" class="sidebar-link flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-slate-800 hover:text-white text-slate-300">
+          <i class="fa-solid fa-comments w-5 mr-3 text-blue-400"></i>
+          <span>แชทกับแอดมิน</span>
+        </a>
+        <a href="#student-track" onclick="switchTab('student-track')" class="sidebar-link flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-slate-800 hover:text-white text-slate-300">
+          <i class="fa-solid fa-clock-rotate-left w-5 mr-3 text-blue-400"></i>
+          <span>ติดตามสถานะปัญหา</span>
+        </a>
+        <a href="#student-songs" onclick="switchTab('student-songs')" class="sidebar-link flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-slate-800 hover:text-white text-slate-300">
+          <i class="fa-solid fa-music w-5 mr-3 text-school-yellow"></i>
+          <span>ขอเพลงสภานักเรียน</span>
+        </a>
+        <a href="#student-lostfound" onclick="switchTab('student-lostfound')" class="sidebar-link flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-slate-800 hover:text-white text-slate-300">
+          <i class="fa-solid fa-box-open w-5 mr-3 text-amber-400"></i>
+          <span>ของหายได้คืน</span>
+        </a>
+      </div>
+
+      <!-- Admin Section -->
+      <div id="sidebar-admin-menu" class="pt-2 border-t border-slate-800/80 hidden">
+        <span class="px-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">เมนูผู้ดูแลระบบ (Admin)</span>
+        <a href="#admin-dashboard" onclick="switchTab('admin-dashboard')" class="sidebar-link flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-slate-800 hover:text-white text-slate-300">
+          <i class="fa-solid fa-chart-pie w-5 mr-3 text-emerald-400"></i>
+          <span>Dashboard สรุปผล</span>
+        </a>
+        <a href="#admin-reports" onclick="switchTab('admin-reports')" class="sidebar-link flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-slate-800 hover:text-white text-slate-300">
+          <i class="fa-solid fa-list-check w-5 mr-3 text-emerald-400"></i>
+          <span>จัดการปัญหาที่แจ้งเข้ามา</span>
+        </a>
+        <a href="#admin-news" onclick="switchTab('admin-news')" class="sidebar-link flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-slate-800 hover:text-white text-slate-300">
+          <i class="fa-solid fa-bullhorn w-5 mr-3 text-emerald-400"></i>
+          <span>จัดการข่าวสาร</span>
+        </a>
+        <a href="#admin-links" onclick="switchTab('admin-links')" class="sidebar-link flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-slate-800 hover:text-white text-slate-300">
+          <i class="fa-solid fa-link w-5 mr-3 text-emerald-400"></i>
+          <span>จัดการลิงก์สำคัญ</span>
+        </a>
+        <a href="#admin-chat" onclick="switchTab('admin-chat')" class="sidebar-link flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-slate-800 hover:text-white text-slate-300">
+          <i class="fa-solid fa-comments w-5 mr-3 text-emerald-400"></i>
+          <span>หน้าจอแชทผู้ดูแล</span>
+        </a>
+        <a href="#admin-achievements" onclick="switchTab('admin-achievements')" class="sidebar-link flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-slate-800 hover:text-white text-slate-300">
+          <i class="fa-solid fa-trophy w-5 mr-3 text-emerald-400"></i>
+          <span>จัดการผลงานสภาฯ</span>
+        </a>
+        <a href="#admin-songs" onclick="switchTab('admin-songs')" class="sidebar-link flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-slate-800 hover:text-white text-slate-300">
+          <i class="fa-solid fa-radio w-5 mr-3 text-emerald-400"></i>
+          <span>จัดการคิวขอเพลง</span>
+        </a>
+        <a href="#admin-lostfound" onclick="switchTab('admin-lostfound')" class="sidebar-link flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-slate-800 hover:text-white text-slate-300">
+          <i class="fa-solid fa-boxes-stacked w-5 mr-3 text-emerald-400"></i>
+          <span>จัดการของหายได้คืน</span>
+        </a>
+      </div>
+
+    </nav>
+
+    <!-- Sidebar Footer (Theme and Login Toggle) -->
+    <div class="p-4 bg-slate-950/80 border-t border-slate-800 backdrop-blur-md">
+      <div class="flex items-center justify-between mb-3">
+        <!-- Theme Toggle -->
+        <button onclick="toggleDarkMode()" class="flex items-center space-x-2 text-slate-300 hover:text-white transition duration-200 py-2 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 w-full justify-center text-xs font-semibold border border-slate-700/50">
+          <i id="theme-icon" class="fa-solid fa-moon text-amber-400 text-sm"></i>
+          <span id="theme-text">โหมดมืด</span>
+        </button>
+      </div>
+
+      <!-- Action Button (Login / Logout) -->
+      <button id="sidebar-auth-btn" onclick="handleAuthAction()" class="w-full py-2.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl text-sm transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg shadow-blue-600/30">
+        <i class="fa-solid fa-right-to-bracket"></i>
+        <span>เข้าสู่ระบบ</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Mobile Sidebar Backdrop Overlay -->
+  <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 hidden md:hidden"></div>
+
+  <!-- Main Content Wrapper -->
+  <div class="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+    
+    <!-- Top Header -->
+    <header class="sticky top-0 bg-white/80 dark:bg-slate-800/80 border-b border-slate-200/80 dark:border-slate-700/80 flex flex-wrap items-center justify-between px-4 md:px-8 py-3 shrink-0 z-40 shadow-sm backdrop-blur-xl transition-colors">
+      <div class="flex flex-1 min-w-0 items-center space-x-4">
+        <!-- Mobile Sidebar Toggle -->
+        <button onclick="toggleSidebar()" class="md:hidden p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl focus:outline-none transition">
+          <i class="fa-solid fa-bars text-xl"></i>
+        </button>
+        <!-- Page Title -->
+        <h1 id="page-header-title" class="font-extrabold text-lg md:text-xl text-slate-900 dark:text-white min-w-0 break-words tracking-tight">สรุปผลงานและการแก้ไขปัญหา</h1>
+      </div>
+
+      <!-- User Action Details in Header -->
+      <div id="header-user-panel" class="flex-shrink-0 flex items-center space-x-3 mt-1 md:mt-0">
+        <div class="text-right max-w-[8rem] truncate">
+          <p id="header-user-name" class="font-bold text-sm text-slate-800 dark:text-slate-100 truncate">ผู้เยี่ยมชม</p>
+          <span id="header-user-class" class="text-[11px] text-slate-500 dark:text-slate-400 block truncate font-medium">สาธารณะ</span>
+        </div>
+        <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700/80 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-lg border border-slate-200 dark:border-slate-600 shadow-sm">
+          <i class="fa-solid fa-user-circle text-2xl"></i>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Views Container -->
+    <main class="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-50 dark:bg-slate-900 transition-colors duration-200">
+      
+      <!-- 1. LOGIN VIEW -->
+      <section id="view-login" class="hidden max-w-md mx-auto my-8 md:my-16">
+        <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-700 overflow-hidden">
+          <div class="p-8 bg-gradient-school text-white text-center relative">
+            <div class="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center mx-auto mb-3 border border-white/20 shadow-inner">
+              <i class="fa-solid fa-graduation-cap text-3xl text-yellow-300"></i>
+            </div>
+            <h2 class="text-2xl font-black tracking-tight">เข้าสู่ระบบ</h2>
+            <p class="text-blue-100 text-xs mt-1 font-light">ระบบจัดการและรับเรื่องร้องเรียนสภานักเรียน</p>
+          </div>
+          
+          <!-- Tab selector for login type -->
+          <div class="flex border-b border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+            <button onclick="setLoginRole('student')" id="login-tab-student" class="flex-1 py-3.5 text-xs font-bold border-b-2 border-school-blue text-school-blue dark:text-school-yellow dark:border-school-yellow transition-all">
+              <i class="fa-solid fa-user-graduate mr-2"></i>นักเรียน
+            </button>
+            <button onclick="setLoginRole('admin')" id="login-tab-admin" class="flex-1 py-3.5 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-all">
+              <i class="fa-solid fa-user-shield mr-2"></i>ผู้ดูแลระบบ
+            </button>
+          </div>
+
+          <!-- Login Forms -->
+          <div class="p-6 md:p-8">
+            <div id="login-error" class="hidden mb-5 p-3.5 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 rounded-2xl text-xs font-medium border border-rose-100 dark:border-rose-900/50 flex items-center space-x-2">
+              <i class="fa-solid fa-triangle-exclamation text-base"></i>
+              <span id="login-error-msg">ชื่อหรือรหัสผ่านไม่ถูกต้อง</span>
+            </div>
+
+            <!-- Student Form -->
+            <form id="form-login-student" onsubmit="event.preventDefault(); submitLogin('student');">
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5 tracking-wider">รหัสนักเรียน (5 หลัก)</label>
+                  <input type="text" id="login-student-id" required maxlength="5" placeholder="เช่น 12345" class="w-full py-2.5 px-4 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-english transition-all">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5 tracking-wider">รหัสผ่าน <span class="text-rose-500">*</span></label>
+                  <input type="password" id="login-student-pass" required placeholder="••••••••" class="w-full py-2.5 px-4 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition-all">
+                  <span class="text-[11px] text-slate-400 mt-1 block">รหัสนักเรียนตัวอย่าง 12345 รหัสผ่านเริ่มต้น: 123</span>
+                </div>
+                <button type="submit" class="w-full py-3 bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-600 hover:to-indigo-600 text-yellow-300 font-extrabold text-sm rounded-xl transition duration-200 shadow-lg shadow-blue-700/30">
+                  เข้าสู่ระบบนักเรียน
+                </button>
+                <button type="button" onclick="toggleLoginRegister('register')" class="w-full py-2 text-xs font-semibold text-slate-500 hover:text-blue-600 dark:hover:text-yellow-400 transition block text-center mt-2">
+                  ยังไม่มีบัญชีนักเรียน? <span class="text-blue-600 dark:text-yellow-400 underline font-bold">สมัครสมาชิก</span>
+                </button>
+              </div>
+            </form>
+
+            <!-- Student Register Form -->
+            <form id="form-register-student" class="hidden" onsubmit="event.preventDefault(); submitRegister();">
+              <div class="space-y-4">
+                <div class="p-3 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 rounded-xl text-[11px] border border-amber-200 dark:border-amber-900/30 flex items-center space-x-2">
+                  <i class="fa-solid fa-circle-info"></i>
+                  <span>กรุณาลงทะเบียนนักเรียนและกำหนดรหัสผ่านเพื่อเข้าใช้งานระบบ</span>
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">ชื่อ - นามสกุล <span class="text-rose-500">*</span></label>
+                  <input type="text" id="register-student-name" required placeholder="เช่น อภิสิทธิ์ รักเรียน" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">รหัสนักเรียน (5 หลัก) <span class="text-rose-500">*</span></label>
+                  <input type="text" id="register-student-id" required maxlength="5" placeholder="เช่น 55555" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-english">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">ห้องเรียน/ชั้นเรียน <span class="text-rose-500">*</span></label>
+                  <input type="text" id="register-student-class" required placeholder="เช่น ม.6/2" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">ตั้งรหัสผ่าน <span class="text-rose-500">*</span></label>
+                  <input type="password" id="register-student-pass" required placeholder="ระบุรหัสผ่านของคุณ" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">ยืนยันรหัสผ่าน <span class="text-rose-500">*</span></label>
+                  <input type="password" id="register-student-pass-confirm" required placeholder="พิมพ์รหัสผ่านซ้ำอีกครั้ง" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+                <button type="submit" class="w-full py-3 bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-900 font-extrabold rounded-xl text-sm transition duration-200 shadow-lg shadow-amber-500/20">
+                  <i class="fa-solid fa-user-plus mr-1.5"></i>ลงทะเบียนนักเรียนใหม่
+                </button>
+                <button type="button" onclick="toggleLoginRegister('login')" class="w-full py-2 text-xs font-semibold text-slate-500 hover:text-blue-600 dark:hover:text-yellow-400 transition block text-center">
+                  ย้อนกลับไปหน้าล็อกอิน
+                </button>
+              </div>
+            </form>
+
+            <!-- Admin Form -->
+            <form id="form-login-admin" class="hidden" onsubmit="event.preventDefault(); submitLogin('admin');">
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">ชื่อผู้ใช้งาน (Username)</label>
+                  <input type="text" id="login-admin-user" required placeholder="ใส่ชื่อผู้ใช้งาน" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-english">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">รหัสผ่าน (Password)</label>
+                  <input type="password" id="login-admin-pass" required placeholder="••••••••" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+                <button type="submit" class="w-full py-3 bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 text-white font-extrabold rounded-xl text-sm transition duration-200 shadow-lg">
+                  เข้าสู่ระบบผู้ดูแล
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. PUBLIC ACHIEVEMENTS VIEW (หน้าหลักสาธารณะแสดงสถิติและผลงาน) -->
+      <section id="view-public-achievements" class="hidden space-y-8">
+        <!-- Hero Section -->
+        <div class="bg-gradient-school text-white p-6 md:p-10 rounded-3xl shadow-2xl relative overflow-hidden">
+          <div class="relative z-10 max-w-2xl">
+            <span class="px-3 py-1 bg-yellow-400/20 text-yellow-300 border border-yellow-400/30 rounded-full text-xs font-bold uppercase tracking-wider inline-block">สภานักเรียนโรงเรียน</span>
+            <h2 class="text-3xl md:text-4xl font-extrabold mt-3 tracking-tight">ผลการดำเนินงานและการแก้ไขปัญหา</h2>
+            <p class="text-blue-100 text-xs md:text-sm mt-3 font-light leading-relaxed">
+              ยินดีต้อนรับสู่แดชบอร์ดสรุปผลการปฏิบัติงานของคณะกรรมการสภานักเรียน ข้อมูลความคืบหน้าการซ่อมบำรุง และผลงานโครงการพัฒนาของพวกเราทุกคน
+            </p>
+          </div>
+          <div class="absolute right-0 bottom-0 translate-y-12 translate-x-12 w-72 h-72 rounded-full bg-blue-500/20 blur-2xl pointer-events-none"></div>
+          <div class="absolute right-0 top-0 -translate-y-12 translate-x-4 w-48 h-48 rounded-full bg-yellow-400/10 blur-xl pointer-events-none"></div>
+        </div>
+        
+        <!-- Problem Resolution Statistics Grid -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+          <!-- Total -->
+          <div class="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-3xl shadow-premium border border-slate-100 dark:border-slate-700/50 flex items-center space-x-4">
+            <div class="p-3.5 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 rounded-2xl border border-blue-100 dark:border-blue-900/40">
+              <i class="fa-solid fa-list text-2xl"></i>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">เรื่องที่แจ้งเข้ามา</p>
+              <h4 id="pub-stat-total" class="text-2xl md:text-3xl font-extrabold font-english mt-0.5 text-slate-900 dark:text-white">0</h4>
+            </div>
+          </div>
+          <!-- Completed -->
+          <div class="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-3xl shadow-premium border border-slate-100 dark:border-slate-700/50 flex items-center space-x-4">
+            <div class="p-3.5 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 rounded-2xl border border-emerald-100 dark:border-emerald-900/40">
+              <i class="fa-regular fa-circle-check text-2xl"></i>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">ดำเนินการเสร็จสิ้น</p>
+              <h4 id="pub-stat-completed" class="text-2xl md:text-3xl font-extrabold font-english mt-0.5 text-slate-900 dark:text-white">0</h4>
+            </div>
+          </div>
+          <!-- Processing -->
+          <div class="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-3xl shadow-premium border border-slate-100 dark:border-slate-700/50 flex items-center space-x-4">
+            <div class="p-3.5 bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 rounded-2xl border border-amber-100 dark:border-amber-900/40">
+              <i class="fa-solid fa-spinner text-2xl status-active-pulse"></i>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">กำลังดำเนินการ</p>
+              <h4 id="pub-stat-processing" class="text-2xl md:text-3xl font-extrabold font-english mt-0.5 text-slate-900 dark:text-white">0</h4>
+            </div>
+          </div>
+          <!-- Failed -->
+          <div class="bg-white dark:bg-slate-800 p-5 md:p-6 rounded-3xl shadow-premium border border-slate-100 dark:border-slate-700/50 flex items-center space-x-4">
+            <div class="p-3.5 bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 rounded-2xl border border-rose-100 dark:border-rose-900/40">
+              <i class="fa-regular fa-circle-xmark text-2xl"></i>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">ไม่สามารถทำได้</p>
+              <h4 id="pub-stat-failed" class="text-2xl md:text-3xl font-extrabold font-english mt-0.5 text-slate-900 dark:text-white">0</h4>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts and Success Rates -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <!-- Success rate circle + details -->
+          <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-premium border border-slate-100 dark:border-slate-700/50 flex flex-col justify-between">
+            <div>
+              <h3 class="font-bold text-base text-slate-800 dark:text-slate-100">อัตราการจัดการปัญหาสำเร็จ</h3>
+              <p class="text-xs text-slate-400">เปรียบเทียบระหว่างสัดส่วนการแก้ไขเสร็จสิ้นและไม่สำเร็จ</p>
+            </div>
+            <div class="my-6 flex flex-col items-center justify-center">
+              <div class="relative w-40 h-40 flex items-center justify-center">
+                <canvas id="pubSuccessChart"></canvas>
+                <div class="absolute flex flex-col items-center justify-center">
+                  <span id="pub-success-percent" class="text-3xl font-extrabold font-english text-slate-900 dark:text-white">0%</span>
+                  <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">สำเร็จ</span>
+                </div>
+              </div>
+            </div>
+            <div class="space-y-2.5 text-xs">
+              <div class="flex items-center justify-between text-slate-500 p-2 rounded-xl bg-slate-50 dark:bg-slate-900/50">
+                <span class="flex items-center font-medium"><span class="w-3 h-3 rounded-full bg-emerald-500 mr-2 shadow-sm"></span>เสร็จสิ้น</span>
+                <span id="pub-success-count" class="font-bold text-slate-800 dark:text-slate-200 font-english">0 เรื่อง</span>
+              </div>
+              <div class="flex items-center justify-between text-slate-500 p-2 rounded-xl bg-slate-50 dark:bg-slate-900/50">
+                <span class="flex items-center font-medium"><span class="w-3 h-3 rounded-full bg-rose-500 mr-2 shadow-sm"></span>ไม่สามารถทำได้</span>
+                <span id="pub-failed-count" class="font-bold text-slate-800 dark:text-slate-200 font-english">0 เรื่อง</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Problem types chart -->
+          <div class="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-premium border border-slate-100 dark:border-slate-700/50">
+            <h3 class="font-bold text-base text-slate-800 dark:text-slate-100 mb-1">หมวดหมู่ปัญหาที่ได้รับแจ้ง</h3>
+            <p class="text-xs text-slate-400 mb-4">จำแนกตามประเภทของปัญหาที่เกิดขึ้นในโรงเรียน</p>
+            <div class="h-64 relative">
+              <canvas id="pubCategoryChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Success stories list (ข่าวสารจากสภานักเรียน) -->
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="font-bold text-xl text-slate-800 dark:text-slate-100">ข่าวสารจากสภานักเรียน</h3>
+              <p class="text-xs text-slate-400">โครงการและผลงานการแก้ไขปัญหาล่าสุดที่สร้างเสร็จสิ้นเพื่อนักเรียน</p>
+            </div>
+          </div>
+
+          <!-- Grid of achievements -->
+          <div id="pub-achievements-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Dynamic achievements template injected here -->
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. STUDENT NEWS VIEW (ข่าวสารและประกาศ) -->
+      <section id="view-student-news" class="hidden space-y-6">
+        <!-- Search bar -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/50 shadow-premium">
+          <div class="relative flex-1 max-w-md">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+            <input type="text" id="news-search" oninput="renderStudentNews()" placeholder="ค้นหาข่าวประชาสัมพันธ์..." class="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs">
+          </div>
+          <div class="flex items-center space-x-2">
+            <span class="text-xs text-slate-400 font-medium">ข่าวสารทั้งหมด:</span>
+            <span id="student-news-count" class="px-3 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-xs font-extrabold font-english border border-blue-200 dark:border-blue-800">0</span>
+          </div>
+        </div>
+
+        <!-- News list grid -->
+        <div id="student-news-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <!-- Injected News Cards -->
+        </div>
+      </section>
+
+      <!-- 4. STUDENT LINKS VIEW (ศูนย์รวมลิงก์สำคัญ) -->
+      <section id="view-student-links" class="hidden space-y-8">
+        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 border border-blue-200 dark:border-blue-900/50 p-5 rounded-2xl flex items-center space-x-4 text-blue-900 dark:text-blue-200 shadow-sm">
+          <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-md">
+            <i class="fa-solid fa-circle-info text-xl"></i>
+          </div>
+          <p class="text-xs md:text-sm font-medium leading-relaxed">
+            สภานักเรียนได้รวบรวมลิงก์แบบสำรวจ การลงสมัคร และพอร์ทัลหลักของโรงเรียนมาไว้ที่นี่เพื่อความสะดวกของนักเรียนทุกคน
+          </p>
+        </div>
+
+        <div id="student-links-container" class="space-y-6">
+          <!-- Injected classified links -->
+        </div>
+      </section>
+
+      <!-- 5. STUDENT REPORT FORM VIEW (แจ้งปัญหากิจการโรงเรียน) -->
+      <section id="view-student-report" class="hidden max-w-2xl mx-auto">
+        <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-700/50 overflow-hidden">
+          <div class="p-6 md:p-8 bg-gradient-school text-white flex items-center justify-between relative">
+            <div>
+              <h2 class="text-xl font-extrabold">แจ้งปัญหาและข้อเสนอแนะ</h2>
+              <p class="text-blue-100 text-xs mt-1 font-light">แจ้งปัญหาด้านกายภาพ ระบบไฟฟ้า ห้องน้ำ ความสะอาด เพื่อความปลอดภัยของพวกเรา</p>
+            </div>
+            <i class="fa-solid fa-circle-exclamation text-4xl text-yellow-300 opacity-90"></i>
+          </div>
+
+          <form id="form-add-report" class="p-6 md:p-8 space-y-6" onsubmit="event.preventDefault(); submitProblemReport();">
+            <!-- Reporter Info -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">ชื่อผู้แจ้ง <span class="text-rose-500">*</span></label>
+                <input type="text" id="report-form-name" required class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-800 dark:text-slate-100 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">รหัสนักเรียน <span class="text-rose-500">*</span></label>
+                <input type="text" id="report-form-id" required maxlength="5" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-800 dark:text-slate-100 text-sm font-english focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">ห้องเรียน <span class="text-rose-500">*</span></label>
+                <input type="text" id="report-form-class" required placeholder="เช่น ม.6/1" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-800 dark:text-slate-100 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              </div>
+            </div>
+
+            <!-- Problem details -->
+            <div class="space-y-4">
+              <div>
+                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">หัวข้อปัญหา <span class="text-rose-500">*</span></label>
+                <input type="text" id="report-title" required placeholder="ระบุอาการชำรุด หรือเรื่องร้องเรียนกระชับ" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">หมวดหมู่ปัญหา <span class="text-rose-500">*</span></label>
+                  <select id="report-category" required class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                    <option value="" disabled selected>เลือกประเภทปัญหา</option>
+                    <option value="อาคารสถานที่">อาคารสถานที่</option>
+                    <option value="ห้องน้ำ">ห้องน้ำ</option>
+                    <option value="ไฟฟ้า">ไฟฟ้า</option>
+                    <option value="อินเทอร์เน็ต">อินเทอร์เน็ต</option>
+                    <option value="ความสะอาด">ความสะอาด</option>
+                    <option value="ความปลอดภัย">ความปลอดภัย</option>
+                    <option value="อื่น ๆ">อื่น ๆ</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">สถานที่เกิดปัญหา <span class="text-rose-500">*</span></label>
+                  <input type="text" id="report-location" required placeholder="เช่น ชั้น 2 ห้องเรียน 421 / โรงยิม" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">วันที่และเวลาที่พบปัญหา <span class="text-rose-500">*</span></label>
+                  <input type="datetime-local" id="report-datetime" required class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-english">
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">รายละเอียดปัญหาอย่างละเอียด</label>
+                <textarea id="report-desc" rows="4" placeholder="ระบุสภาพของปัญหารวมถึงข้อมูลสำคัญเพิ่มเติมเพื่อให้ฝ่ายเทคนิคทำงานได้รวดเร็วขึ้น" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"></textarea>
+              </div>
+
+              <!-- Multiple Image upload -->
+              <div>
+                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">อัปโหลดรูปภาพประกอบ (อัปโหลดได้หลายรูป)</label>
+                <div id="image-drag-area" class="upload-zone py-8 px-4 rounded-2xl flex flex-col items-center justify-center cursor-pointer bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition">
+                  <i class="fa-regular fa-images text-4xl text-blue-500 mb-2"></i>
+                  <span class="text-xs text-slate-600 dark:text-slate-300 text-center font-bold">ลากไฟล์รูปภาพมาวางที่นี่ หรือคลิกเพื่ออัปโหลด</span>
+                  <span class="text-[10px] text-slate-400 mt-1">รองรับ JPG, PNG, WEBP</span>
+                  <input type="file" id="report-images-input" multiple accept="image/*" class="hidden">
+                </div>
+                <!-- Image previews container -->
+                <div id="image-previews" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 mt-4">
+                  <!-- JS will render base64 previews here -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Submit buttons -->
+            <div class="flex items-center justify-end space-x-3 pt-4 border-t border-slate-100 dark:border-slate-700/50">
+              <button type="button" onclick="initStudentReportForm()" class="py-2.5 px-5 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-xs font-bold transition duration-150">
+                ยกเลิก
+              </button>
+              <button type="submit" class="py-2.5 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-extrabold shadow-lg shadow-blue-600/30 transition duration-150">
+                <i class="fa-solid fa-paper-plane mr-2"></i>ส่งคำร้องเรียน
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- 6. STUDENT TRACK STATUS VIEW (ติดตามสถานะปัญหาของตนเอง) -->
+      <section id="view-student-track" class="hidden space-y-6">
+        <!-- Status Filter tabs -->
+        <div class="flex flex-wrap border-b border-slate-200 dark:border-slate-700 gap-2">
+          <button onclick="filterStudentTrack('all')" id="track-tab-all" class="px-5 py-2.5 text-xs font-bold border-b-2 border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400">
+            ทั้งหมด
+          </button>
+          <button onclick="filterStudentTrack('pending')" id="track-tab-pending" class="px-5 py-2.5 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
+            รอรับเรื่อง
+          </button>
+          <button onclick="filterStudentTrack('processing')" id="track-tab-processing" class="px-5 py-2.5 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
+            กำลังดำเนินการ
+          </button>
+          <button onclick="filterStudentTrack('completed')" id="track-tab-completed" class="px-5 py-2.5 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
+            ดำเนินการแล้ว
+          </button>
+          <button onclick="filterStudentTrack('failed')" id="track-tab-failed" class="px-5 py-2.5 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
+            ไม่สามารถทำได้
+          </button>
+        </div>
+
+        <!-- Student History List -->
+        <div id="student-track-list" class="space-y-4">
+          <!-- Dynamic reports list loaded by JS -->
+        </div>
+      </section>
+
+      <!-- 6b. STUDENT CHAT VIEW (แชทกับแอดมินสำหรับนักเรียน) -->
+      <section id="view-student-chat" class="hidden space-y-6">
+        <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700/50 shadow-2xl p-6">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="font-extrabold text-lg text-slate-900 dark:text-white">แชทกับแอดมิน</h2>
+              <p class="text-xs text-slate-400">ส่งข้อความตรงถึงทีมผู้ดูแลระบบเพื่อสอบถามหรือแจ้งปัญหาเพิ่มเติม</p>
+            </div>
+            <span id="student-chat-session-name" class="inline-flex items-center px-3.5 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 text-xs font-bold border border-blue-100 dark:border-blue-900">ห้องแชท</span>
+          </div>
+
+          <div id="student-chat-list" class="max-h-[55vh] md:max-h-[60vh] min-h-[22rem] overflow-y-auto space-y-3 px-3 py-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-700/50">
+            <!-- Chat messages loaded by JS -->
+          </div>
+
+          <div class="mt-4 space-y-3">
+            <div class="flex items-center gap-3">
+              <label for="student-chat-file-input" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer hover:bg-slate-200 transition">
+                <i class="fa-solid fa-paperclip text-blue-500"></i>
+                <span>แนบรูป</span>
+              </label>
+              <input id="student-chat-file-input" type="file" accept="image/*" multiple class="hidden" onchange="handleChatFileChange('student')" />
+              <button onclick="sendStudentChat()" class="ml-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-extrabold shadow-md shadow-blue-600/30">ส่ง</button>
+            </div>
+            <div id="student-chat-attachments" class="grid grid-cols-3 gap-2"></div>
+            <div class="flex gap-3">
+              <input id="student-chat-input" type="text" placeholder="พิมพ์ข้อความของคุณที่นี่..." class="flex-1 py-3 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 6c. ADMIN CHAT VIEW (หน้าจอสนทนาของแอดมิน) -->
+      <section id="view-admin-chat" class="hidden space-y-6">
+        <div class="grid grid-cols-1 xl:grid-cols-[300px_1fr] gap-6">
+          <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700/50 shadow-2xl p-5">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="font-bold text-sm text-slate-900 dark:text-white">รายการห้องแชทนักเรียน</h2>
+              <span class="text-xs text-slate-400">เลือกหัวข้อ</span>
+            </div>
+            <div id="admin-chat-session-list" class="space-y-2">
+              <!-- JS will render session list -->
+            </div>
+          </div>
+
+          <div class="flex flex-col bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700/50 shadow-2xl overflow-hidden">
+            <div class="p-5 border-b border-slate-200 dark:border-slate-700/50 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
+              <div>
+                <h2 class="font-bold text-sm text-slate-900 dark:text-white">หน้าจอแชท</h2>
+                <p id="admin-chat-session-caption" class="text-xs text-slate-400">เลือกหัวข้อสนทนาจากด้านซ้าย</p>
+              </div>
+            </div>
+            <div id="admin-chat-list" class="flex-1 min-h-[22rem] overflow-y-auto p-4 space-y-3 bg-slate-50 dark:bg-slate-900"></div>
+            <div class="p-4 border-t border-slate-200 dark:border-slate-700/50 bg-slate-100 dark:bg-slate-950 space-y-3">
+              <div class="flex items-center gap-3">
+                <label for="admin-chat-file-input" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer hover:bg-slate-200 transition">
+                  <i class="fa-solid fa-paperclip text-emerald-500"></i>
+                  <span>แนบรูป</span>
+                </label>
+                <input id="admin-chat-file-input" type="file" accept="image/*" multiple class="hidden" onchange="handleChatFileChange('admin')" />
+                <button onclick="sendAdminChat()" class="ml-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-extrabold shadow-md shadow-emerald-600/30">ส่ง</button>
+              </div>
+              <div id="admin-chat-attachments" class="grid grid-cols-3 gap-2"></div>
+              <div class="flex gap-3">
+                <input id="admin-chat-input" type="text" placeholder="พิมพ์ข้อความตอบกลับที่นี่..." class="flex-1 py-3 px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 7. ADMIN DASHBOARD VIEW (Dashboard สรุปผลงานแอดมิน) -->
+      <section id="view-admin-dashboard" class="hidden space-y-8">
+        <!-- KPI Card row -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+          <!-- Total users -->
+          <div class="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-100 dark:border-slate-700/50 shadow-premium flex items-center space-x-4">
+            <div class="p-3 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 rounded-2xl">
+              <i class="fa-solid fa-users text-xl"></i>
+            </div>
+            <div>
+              <p class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">นักเรียนในฐานข้อมูล</p>
+              <h4 id="admin-kpi-users" class="text-xl md:text-2xl font-extrabold font-english leading-none mt-1 text-slate-900 dark:text-white">0</h4>
+            </div>
+          </div>
+          <!-- Total reports -->
+          <div class="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-100 dark:border-slate-700/50 shadow-premium flex items-center space-x-4">
+            <div class="p-3 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 rounded-2xl">
+              <i class="fa-solid fa-inbox text-xl"></i>
+            </div>
+            <div>
+              <p class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">ปัญหาที่ได้รับแจ้ง</p>
+              <h4 id="admin-kpi-reports" class="text-xl md:text-2xl font-extrabold font-english leading-none mt-1 text-slate-900 dark:text-white">0</h4>
+            </div>
+          </div>
+          <!-- Completed reports -->
+          <div class="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-100 dark:border-slate-700/50 shadow-premium flex items-center space-x-4">
+            <div class="p-3 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 rounded-2xl">
+              <i class="fa-solid fa-circle-check text-xl"></i>
+            </div>
+            <div>
+              <p class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">ดำเนินการแล้วเสร็จ</p>
+              <h4 id="admin-kpi-completed" class="text-xl md:text-2xl font-extrabold font-english leading-none mt-1 text-slate-900 dark:text-white">0</h4>
+            </div>
+          </div>
+          <!-- In-progress reports -->
+          <div class="bg-white dark:bg-slate-800 p-5 rounded-3xl border border-slate-100 dark:border-slate-700/50 shadow-premium flex items-center space-x-4">
+            <div class="p-3 bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 rounded-2xl">
+              <i class="fa-solid fa-clock text-xl"></i>
+            </div>
+            <div>
+              <p class="text-[11px] text-slate-400 font-bold uppercase tracking-wider">กำลังดำเนินการ</p>
+              <h4 id="admin-kpi-processing" class="text-xl md:text-2xl font-extrabold font-english leading-none mt-1 text-slate-900 dark:text-white">0</h4>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts row -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <!-- Chart 1: Categories -->
+          <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700/50 shadow-premium">
+            <h3 class="font-bold text-sm text-slate-800 dark:text-slate-200 mb-4">หมวดหมู่ปัญหาทั้งหมด</h3>
+            <div class="h-64 relative flex justify-center">
+              <canvas id="adminCategoryChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Chart 2: Monthly breakdown -->
+          <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700/50 shadow-premium">
+            <h3 class="font-bold text-sm text-slate-800 dark:text-slate-200 mb-4">สถิติปริมาณรายงานปัญหา</h3>
+            <div class="h-64 relative">
+              <canvas id="adminMonthlyChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent activities -->
+        <div class="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-3xl border border-slate-100 dark:border-slate-700/50 shadow-premium">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="font-extrabold text-base text-slate-900 dark:text-white">ปัญหาร้องเรียนล่าสุด</h3>
+            <button onclick="switchTab('admin-reports')" class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 font-bold flex items-center">
+              ดูทั้งหมด <i class="fa-solid fa-chevron-right ml-1.5 text-[10px]"></i>
+            </button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead>
+                <tr class="border-b border-slate-200 dark:border-slate-700 text-slate-400 font-bold uppercase tracking-wider pb-2">
+                  <th class="py-3 px-2">หัวข้อปัญหา</th>
+                  <th class="py-3 px-2">หมวดหมู่</th>
+                  <th class="py-3 px-2">ผู้แจ้ง</th>
+                  <th class="py-3 px-2">วันที่แจ้ง</th>
+                  <th class="py-3 px-2 text-center">สถานะ</th>
+                  <th class="py-3 px-2 text-right">ดำเนินการ</th>
+                </tr>
+              </thead>
+              <tbody id="admin-recent-reports-table">
+                <!-- JS will inject top 5 recent reports -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 8. ADMIN MANAGE REPORTS (จัดการปัญหาและดำเนินการเปลี่ยนสถานะ) -->
+      <section id="view-admin-reports" class="hidden space-y-6">
+        <!-- Filter and Search controls -->
+        <div class="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-2xl border border-slate-100 dark:border-slate-700/50 shadow-premium flex flex-col md:flex-row gap-4 items-center justify-between">
+          <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            <select id="admin-report-filter-status" onchange="renderAdminReports()" class="py-2 px-3 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="all">สถานะทั้งหมด</option>
+              <option value="pending">รอรับเรื่อง</option>
+              <option value="processing">กำลังดำเนินการ</option>        
+              <option value="completed">ดำเนินการแล้ว</option>
+              <option value="failed">ไม่สามารถดำเนินการได้</option>
+            </select>
+            <select id="admin-report-filter-category" onchange="renderAdminReports()" class="py-2 px-3 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="all">หมวดหมู่ทั้งหมด</option>
+              <option value="อาคารสถานที่">อาคารสถานที่</option>
+              <option value="ห้องน้ำ">ห้องน้ำ</option>
+              <option value="ไฟฟ้า">ไฟฟ้า</option>
+              <option value="อินเทอร์เน็ต">อินเทอร์เน็ต</option>
+              <option value="ความสะอาด">ความสะอาด</option>
+              <option value="ความปลอดภัย">ความปลอดภัย</option>
+              <option value="อื่น ๆ">อื่น ๆ</option>
+            </select>
+          </div>
+          <div class="relative w-full md:w-64">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+            <input type="text" id="admin-report-search" oninput="renderAdminReports()" placeholder="ค้นหาเรื่อง / ผู้รายงาน..." class="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none text-xs">
+          </div>
+        </div>
+
+        <!-- Master Reports Table -->
+        <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700/50 shadow-premium overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50/80 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 text-slate-400 font-bold uppercase tracking-wider">
+                <tr>
+                  <th class="p-4">รหัส/ผู้แจ้ง</th>
+                  <th class="p-4">หมวดหมู่</th>
+                  <th class="p-4">หัวข้อและสถานที่</th>
+                  <th class="p-4">วันที่แจ้ง</th>
+                  <th class="p-4 text-center">สถานะ</th>
+                  <th class="p-4 text-right">การจัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="admin-all-reports-table" class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                <!-- JS will inject all matching reports -->
+              </tbody>
+            </table>
+          </div>
+          <!-- Empty state -->
+          <div id="admin-reports-empty" class="hidden text-center py-16 text-slate-400">
+            <i class="fa-solid fa-folder-open text-4xl mb-3 block"></i>
+            <span class="font-medium">ไม่พบประวัติปัญหาร้องเรียนตามเงื่อนไขการค้นหา</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 9. ADMIN MANAGE NEWS (จัดการข่าวสาร) -->
+      <section id="view-admin-news" class="hidden space-y-6">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider">รายการข่าวสารประชาสัมพันธ์</h2>
+          <button onclick="openNewsModal()" class="py-2.5 px-5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-extrabold flex items-center space-x-2 shadow-lg shadow-blue-600/30">
+            <i class="fa-solid fa-plus"></i>
+            <span>เพิ่มข่าวประกาศ</span>
+          </button>
+        </div>
+
+        <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700/50 shadow-premium overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50/80 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 text-slate-400 font-bold uppercase tracking-wider">
+                <tr>
+                  <th class="p-4 w-28">ภาพปก</th>
+                  <th class="p-4">หัวข้อข่าว</th>
+                  <th class="p-4">วันที่เผยแพร่</th>
+                  <th class="p-4">เนื้อหาโดยย่อ</th>
+                  <th class="p-4 text-right">ดำเนินการ</th>
+                </tr>
+              </thead>
+              <tbody id="admin-news-table-body" class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                <!-- JS will inject table rows for news -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 10. ADMIN MANAGE LINKS (จัดการลิงก์ภายนอก) -->
+      <section id="view-admin-links" class="hidden space-y-6">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider">ศูนย์รวมลิงก์โรงเรียนและกิจกรรม</h2>
+          <button onclick="openLinkModal()" class="py-2.5 px-5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-extrabold flex items-center space-x-2 shadow-lg shadow-blue-600/30">
+            <i class="fa-solid fa-plus"></i>
+            <span>เพิ่มลิงก์สำคัญ</span>
+          </button>
+        </div>
+
+        <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700/50 shadow-premium overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50/80 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 text-slate-400 font-bold uppercase tracking-wider">
+                <tr>
+                  <th class="p-4">หมวดหมู่ลิงก์</th>
+                  <th class="p-4">ชื่อลิงก์สำคัญ</th>
+                  <th class="p-4">ที่อยู่ URL (ปลายทาง)</th>
+                  <th class="p-4 text-right">ดำเนินการ</th>
+                </tr>
+              </thead>
+              <tbody id="admin-links-table-body" class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                <!-- JS will inject table rows for links -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 11. ADMIN MANAGE ACHIEVEMENTS (จัดการผลงานสภานักเรียน) -->
+      <section id="view-admin-achievements" class="hidden space-y-6">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider">แผงจัดการผลงานสภานักเรียน (Achievements)</h2>
+          <button onclick="openAchievementModal()" class="py-2.5 px-5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-extrabold flex items-center space-x-2 shadow-lg shadow-blue-600/30">
+            <i class="fa-solid fa-plus"></i>
+            <span>เพิ่มผลงานสภาฯ</span>
+          </button>
+        </div>
+
+        <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700/50 shadow-premium overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50/80 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 text-slate-400 font-bold uppercase tracking-wider">
+                <tr>
+                  <th class="p-4 w-28">ภาพผลงาน</th>
+                  <th class="p-4">ชื่อผลงาน/โครงการ</th>
+                  <th class="p-4">ผู้รับผิดชอบ</th>
+                  <th class="p-4">วันที่บันทึกผลงาน</th>
+                  <th class="p-4 text-right">ดำเนินการ</th>
+                </tr>
+              </thead>
+              <tbody id="admin-achievements-table-body" class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                <!-- JS will inject achievements rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 12. STUDENT SONG REQUESTS (ขอเพลงสภานักเรียน) -->
+      <section id="view-student-songs" class="hidden space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <!-- Column 1: Request Form -->
+          <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-premium border border-slate-100 dark:border-slate-700/50 h-fit">
+            <h3 class="font-extrabold text-base text-slate-800 dark:text-slate-100 mb-2 flex items-center">
+              <i class="fa-solid fa-paper-plane mr-2.5 text-amber-400"></i>ส่งคำขอเพลง
+            </h3>
+            <p class="text-xs text-slate-400 mb-5">ส่งชื่อเพลงที่ชอบให้สภานักเรียนนำไปเปิดในช่วงพักเที่ยงหรือชั่วโมงโฮมรูม</p>
+            
+            <form id="form-request-song" onsubmit="event.preventDefault(); submitSongRequest();" class="space-y-4">
+              <div>
+                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ชื่อเพลง <span class="text-rose-500">*</span></label>
+                <input type="text" id="song-title" required placeholder="เช่น วัดใจ" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+              </div>
+              
+              <div>
+                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ชื่อศิลปิน <span class="text-rose-500">*</span></label>
+                <input type="text" id="song-artist" required placeholder="เช่น Silly Fools" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ลิงก์เพลง (เช่น YouTube / Spotify ถ้ามี)</label>
+                <input type="url" id="song-url" placeholder="https://www.youtube.com/..." class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-english focus:outline-none focus:ring-2 focus:ring-blue-500">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ข้อความฝากถึง</label>
+                <textarea id="song-message" rows="3" placeholder="เช่น ฝากเปิดให้เพื่อนร่วมห้องสอบ หรือขอเพลงเนื่องในวันซัมเมอร์" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+              </div>
+
+              <button type="submit" class="w-full py-3 bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-900 font-extrabold rounded-xl text-xs transition duration-200 shadow-lg shadow-amber-500/20">
+                <i class="fa-solid fa-music mr-2"></i>ส่งคำขอเพลง
+              </button>
+            </form>
+          </div>
+
+          <!-- Column 2 & 3: Song Requests List -->
+          <div class="lg:col-span-2 space-y-4">
+            <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-100 dark:border-slate-700/50 shadow-premium flex items-center justify-between">
+              <h3 class="font-extrabold text-sm text-slate-800 dark:text-slate-100">
+                <i class="fa-solid fa-list-ol mr-2.5 text-blue-600 dark:text-yellow-400"></i>คิวขอเพลงทั้งหมดในโรงเรียน
+              </h3>
+              <div class="flex items-center space-x-2">
+                <span class="text-xs text-slate-400 font-medium">คำขอทั้งหมด:</span>
+                <span id="student-songs-count" class="px-3 py-1 bg-blue-600 text-yellow-300 rounded-full text-xs font-extrabold font-english shadow-sm">0</span>
+              </div>
+            </div>
+
+            <!-- Song list container -->
+            <div id="student-songs-list" class="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+              <!-- Injected dynamically by app.js -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 13. ADMIN MANAGE SONGS (จัดการคิวขอเพลง) -->
+      <section id="view-admin-songs" class="hidden space-y-6">
+        <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-100 dark:border-slate-700/50 shadow-premium flex flex-col xl:flex-row gap-4 items-center justify-between">
+          <div class="flex flex-wrap items-center gap-3 w-full xl:w-auto">
+            <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider mr-2">รายการคำขอเปิดเพลงของนักเรียน</h2>
+            <select id="admin-song-filter-status" onchange="renderAdminSongs()" class="py-2 px-3 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="all">สถานะคิวเพลงทั้งหมด</option>
+              <option value="pending">รอคิว</option>
+              <option value="approved">เตรียมเปิด</option>
+              <option value="played">เปิดแล้ว</option>
+              <option value="rejected">ปฏิเสธ</option>
+            </select>
+            <select id="admin-song-filter-date" onchange="renderAdminSongs()" class="py-2 px-3 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="all">วันที่ส่งคำขอทั้งหมด</option>
+            </select>
+            <button onclick="clearPlayedSongs()" class="py-2 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center space-x-1.5 transition duration-150 shadow-md shadow-rose-600/20">
+              <i class="fa-solid fa-trash-can"></i>
+              <span>ล้างเพลงที่เปิดแล้วทั้งหมด</span>
+            </button>
+          </div>
+          <div class="relative w-full xl:w-64">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+            <input type="text" id="admin-song-search" oninput="renderAdminSongs()" placeholder="ค้นหาเพลง / ศิลปิน / ผู้ขอ..." class="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none text-xs">
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700/50 shadow-premium overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50/80 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 text-slate-400 font-bold uppercase tracking-wider">
+                <tr>
+                  <th class="p-4">เพลง/ศิลปิน</th>
+                  <th class="p-4">ผู้ขอ/วันที่ขอ</th>
+                  <th class="p-4">ข้อความฝากถึง</th>
+                  <th class="p-4">สถานะ</th>
+                  <th class="p-4 text-right">ดำเนินการ</th>
+                </tr>
+              </thead>
+              <tbody id="admin-songs-table-body" class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                <!-- Injected dynamically by app.js -->
+              </tbody>
+            </table>
+          </div>
+          <div id="admin-songs-empty" class="hidden text-center py-16 text-slate-400">
+            <i class="fa-solid fa-radio text-4xl mb-3 block"></i>
+            <span class="font-medium">ไม่พบคำขอเพลงในระบบ</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 14. LOST & FOUND VIEW (ของหายได้คืน สำหรับนักเรียน) -->
+      <section id="view-student-lostfound" class="hidden space-y-6">
+        <!-- Control panel: Search and Action Buttons -->
+        <div class="flex flex-col md:flex-row gap-4 items-center justify-between bg-white dark:bg-slate-800 p-4 md:p-5 rounded-2xl border border-slate-100 dark:border-slate-700/50 shadow-premium">
+          <div class="flex flex-col md:flex-row gap-3 flex-1 w-full max-w-2xl">
+            <div class="relative flex-1 w-full max-w-md">
+              <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+              <input type="text" id="lf-search" oninput="renderStudentLostFound()" placeholder="ค้นหาของหาย / ของที่เก็บได้..." class="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs font-medium">
+            </div>
+            <select id="lf-category-filter" onchange="filterLostFoundByCategory(this.value)" class="py-2 px-3 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-semibold">
+              <option value="all">ทุกหมวดหมู่</option>
+              <option value="money">💵 เงิน</option>
+              <option value="electronics">📱 อุปกรณ์อิเล็กทรอนิกส์</option>
+              <option value="documents">📄 เอกสาร/บัตร</option>
+              <option value="keys">🔑 กุญแจ/กุญแจรถ</option>
+              <option value="clothing">👕 เสื้อผ้า/หมวก</option>
+              <option value="accessories">💍 เครื่องประดับ</option>
+              <option value="belongings">🎒 ของใช้ทั่วไป</option>
+              <option value="others">🧰 อื่น ๆ</option>
+            </select>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            <button onclick="openLostFoundModal('lost')" class="flex-1 md:flex-none py-2.5 px-5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-extrabold flex items-center justify-center space-x-2 transition duration-150 shadow-lg shadow-blue-600/30">
+              <i class="fa-solid fa-plus"></i>
+              <span>แจ้งของหาย / เก็บได้</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter tabs for Status -->
+        <div class="flex border-b border-slate-200 dark:border-slate-700 gap-2">
+          <button id="lf-filter-all" onclick="filterLostFound('all')" class="px-5 py-2.5 text-xs font-bold border-b-2 border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400">
+            ทั้งหมด
+          </button>
+          <button id="lf-filter-searching" onclick="filterLostFound('searching')" class="px-5 py-2.5 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
+            กำลังตามหา / ยังไม่มีคนรับ
+          </button>
+          <button id="lf-filter-returned" onclick="filterLostFound('returned')" class="px-5 py-2.5 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-700 dark:hover:text-slate-200">
+            ส่งคืนเรียบร้อยแล้ว
+          </button>
+        </div>
+
+        <!-- Split layout for Lost and Found -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <!-- Left: Lost Items -->
+          <div class="space-y-4">
+            <div class="flex items-center justify-between bg-rose-50/70 dark:bg-rose-950/30 p-4 rounded-2xl border border-rose-100 dark:border-rose-900/40 shadow-sm">
+              <h3 class="font-extrabold text-sm text-rose-800 dark:text-rose-300 flex items-center">
+                <i class="fa-solid fa-bullhorn mr-2.5 text-base"></i>รายการของหาย (กำลังตามหา)
+              </h3>
+              <span id="lost-count" class="px-3 py-1 bg-rose-200 dark:bg-rose-900/80 text-rose-800 dark:text-rose-200 text-xs font-extrabold rounded-full font-english">0</span>
+            </div>
+            <div id="lost-items-list" class="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+              <!-- JS injected Lost Cards -->
+            </div>
+          </div>
+
+          <!-- Right: Found Items -->
+          <div class="space-y-4">
+            <div class="flex items-center justify-between bg-emerald-50/70 dark:bg-emerald-950/30 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/40 shadow-sm">
+              <h3 class="font-extrabold text-sm text-emerald-800 dark:text-emerald-300 flex items-center">
+                <i class="fa-solid fa-box-archive mr-2.5 text-base"></i>รายการที่เก็บได้ (หาเจ้าของ)
+              </h3>
+              <span id="found-count" class="px-3 py-1 bg-emerald-200 dark:bg-emerald-900/80 text-emerald-800 dark:text-emerald-200 text-xs font-extrabold rounded-full font-english">0</span>
+            </div>
+            <div id="found-items-list" class="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+              <!-- JS injected Found Cards -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 15. ADMIN LOST & FOUND VIEW (จัดการของหายได้คืน สำหรับแอดมิน) -->
+      <section id="view-admin-lostfound" class="hidden space-y-6">
+        <div class="bg-white dark:bg-slate-800 p-4 md:p-5 rounded-2xl border border-slate-100 dark:border-slate-700/50 shadow-premium flex flex-col xl:flex-row gap-4 items-center justify-between">
+          <div class="flex flex-wrap items-center gap-3 w-full xl:w-auto">
+            <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider mr-2">จัดการรายการของหายได้คืน</h2>
+            <select id="admin-lf-filter-status" onchange="renderAdminLostFound()" class="py-2 px-3 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-semibold">
+              <option value="all">สถานะทั้งหมด</option>
+              <option value="searching">กำลังตามหา / รอรับของ</option>
+              <option value="returned">ส่งคืนเรียบร้อย</option>
+            </select>
+            <select id="admin-lf-filter-type" onchange="renderAdminLostFound()" class="py-2 px-3 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-semibold">
+              <option value="all">ประเภททั้งหมด</option>
+              <option value="lost">ของหาย (Lost)</option>
+              <option value="found">เก็บของได้ (Found)</option>
+            </select>
+            <select id="admin-lf-filter-category" onchange="renderAdminLostFound()" class="py-2 px-3 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-semibold">
+              <option value="all">หมวดหมู่ทั้งหมด</option>
+              <option value="money">💵 เงิน</option>
+              <option value="electronics">📱 อุปกรณ์อิเล็กทรอนิกส์</option>
+              <option value="documents">🪪 เอกสาร/บัตร</option>
+              <option value="keys">🔑 กุญแจ/กุญแจรถ</option>
+              <option value="clothing">👕 เสื้อผ้า/หมวก</option>
+              <option value="accessories">💍 เครื่องประดับ</option>
+              <option value="belongings">🎒 ของใช้ทั่วไป</option>
+              <option value="others">🧰 อื่น ๆ</option>
+            </select>
+          </div>
+          <div class="relative w-full xl:w-64">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+            <input type="text" id="admin-lf-search" oninput="renderAdminLostFound()" placeholder="ค้นหาของ / ผู้แจ้ง..." class="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none text-xs">
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700/50 shadow-premium overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50/80 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700 text-slate-400 font-bold uppercase tracking-wider">
+                <tr>
+                  <th class="p-4 w-24">ภาพของ</th>
+                  <th class="p-4">ประเภท</th>
+                  <th class="p-4">หมวดหมู่</th>
+                  <th class="p-4">ชื่อสิ่งของ</th>
+                  <th class="p-4">ห้องเรียน / สถานที่</th>
+                  <th class="p-4">ผู้แจ้ง / วันที่แจ้ง</th>
+                  <th class="p-4">สถานะ</th>
+                  <th class="p-4">ปักหมุด</th>
+                  <th class="p-4 text-right">ดำเนินการ</th>
+                </tr>
+              </thead>
+              <tbody id="admin-lf-table-body" class="divide-y divide-slate-100 dark:divide-slate-700/50">
+                <!-- JS dynamic injection -->
+              </tbody>
+            </table>
+          </div>
+          <div id="admin-lf-empty" class="hidden text-center py-16 text-slate-400">
+            <i class="fa-solid fa-box-open text-4xl mb-3 block"></i>
+            <span class="font-medium">ไม่พบรายการของหายได้คืน</span>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ==================== MODALS / OVERLAYS ==================== -->
+
+  <!-- 1. News Detail Modal for Students -->
+  <div id="student-news-modal" class="fixed inset-0 bg-slate-950/70 z-50 flex items-center justify-center p-4 hidden modal-backdrop">
+    <div class="bg-white dark:bg-slate-800 rounded-3xl max-w-xl w-full max-h-[85vh] overflow-y-auto shadow-2xl border border-slate-100 dark:border-slate-700 modal-panel">
+      <div class="relative h-60 bg-slate-100 dark:bg-slate-900">
+        <img id="news-modal-image" class="w-full h-full object-cover" src="" alt="News Image">
+        <button onclick="closeStudentNewsModal()" class="absolute top-4 right-4 w-9 h-9 rounded-full bg-slate-950/80 hover:bg-slate-950 text-white flex items-center justify-center shadow-lg transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="p-6 md:p-8">
+        <span id="news-modal-date" class="text-xs text-blue-600 dark:text-blue-400 font-extrabold font-english uppercase tracking-wider">DATE</span>
+        <h3 id="news-modal-title" class="font-extrabold text-xl text-slate-900 dark:text-white mt-1.5">TITLE</h3>
+        <p id="news-modal-content" class="text-xs md:text-sm text-slate-600 dark:text-slate-300 mt-4 leading-relaxed whitespace-pre-line font-normal">CONTENT</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Report Details & Action Modal for Admin/Student Tracking -->
+  <div id="report-detail-modal" class="fixed inset-0 bg-slate-950/70 z-50 flex items-center justify-center p-4 hidden modal-backdrop">
+    <div class="bg-white dark:bg-slate-800 rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-100 dark:border-slate-700 modal-panel">
+      <!-- Modal Header -->
+      <div class="p-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+        <div>
+          <span id="report-detail-badge" class="px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider">STATUS</span>
+          <h3 class="font-extrabold text-base text-slate-900 dark:text-white mt-2">รายละเอียดการร้องเรียน</h3>
+        </div>
+        <button onclick="closeReportDetailModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white p-2 rounded-xl transition">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6 md:p-8 space-y-6">
+        <!-- Topic & Info -->
+        <div>
+          <h4 id="report-detail-title" class="font-extrabold text-lg text-slate-900 dark:text-white">เครื่องซ่อม...</h4>
+          <div class="grid grid-cols-2 gap-x-4 gap-y-2 mt-3 text-xs text-slate-500">
+            <div><span class="font-bold text-slate-400">ห้องเรียน:</span> <span id="report-detail-classroom" class="text-slate-700 dark:text-slate-300 font-semibold">ม.6/1</span></div>
+            <div><span class="font-bold text-slate-400">หมวดหมู่:</span> <span id="report-detail-category" class="text-slate-700 dark:text-slate-300 font-semibold">อาคารสถานที่</span></div>
+            <div><span class="font-bold text-slate-400">สถานที่:</span> <span id="report-detail-location" class="text-slate-700 dark:text-slate-300 font-semibold">ตึก 1</span></div>
+            <div><span class="font-bold text-slate-400">เวลาพบปัญหา:</span> <span id="report-detail-datetime" class="text-slate-700 dark:text-slate-300 font-english font-semibold">12/06</span></div>
+          </div>
+        </div>
+
+        <!-- Description -->
+        <div class="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl text-xs leading-relaxed text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-700/40">
+          <span class="block font-bold text-slate-400 mb-1">รายละเอียดปัญหา:</span>
+          <p id="report-detail-desc" class="whitespace-pre-line">เนื้อหารายละเอียด...</p>
+        </div>
+
+        <!-- Attached Photos -->
+        <div>
+          <span class="block text-xs font-bold text-slate-400 mb-2">รูปภาพแนบประกอบ:</span>
+          <div id="report-detail-photos" class="grid grid-cols-3 sm:grid-cols-4 gap-3">
+            <!-- JS will render clickable image cards -->
+          </div>
+        </div>
+
+        <!-- Action / Resolution Log -->
+        <div class="border-t border-slate-100 dark:border-slate-700/50 pt-5 space-y-3">
+          <h5 class="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center">
+            <i class="fa-solid fa-wrench mr-2 text-blue-500"></i>บันทึกการดำเนินงานและผลลัพธ์
+          </h5>
+          <div class="bg-blue-50/50 dark:bg-blue-950/30 p-5 rounded-2xl border border-blue-100 dark:border-blue-900/30 text-xs">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <span class="text-slate-400 block mb-0.5 font-bold">วันที่แก้ไขเสร็จสิ้น:</span>
+                <span id="report-detail-resdate" class="font-semibold text-slate-800 dark:text-slate-200 font-english">-</span>
+              </div>
+              <div>
+                <span class="text-slate-400 block mb-0.5 font-bold">ผู้ดำเนินการบันทึก:</span>
+                <span class="font-semibold text-slate-800 dark:text-slate-200">คณะกรรมการสภานักเรียน</span>
+              </div>
+            </div>
+            <div class="mt-3">
+              <span class="text-slate-400 block mb-1 font-bold">หมายเหตุและผลการดำเนินการ:</span>
+              <p id="report-detail-notes" class="text-slate-600 dark:text-slate-300 whitespace-pre-line">- ไม่มีข้อมูลบันทึกเพิ่มเติม -</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ADMIN EXCLUSIVE ACTIONS -->
+        <div id="admin-actions-section" class="border-t border-slate-100 dark:border-slate-700/50 pt-5 space-y-4 hidden bg-slate-50/60 dark:bg-slate-900/40 p-5 rounded-2xl border border-slate-200/50 dark:border-slate-700/40">
+          <h5 class="text-xs font-bold text-slate-800 dark:text-slate-200"><i class="fa-solid fa-user-gear mr-2 text-emerald-500"></i>เปลี่ยนสถานะและบันทึกผลงาน (เฉพาะ Admin)</h5>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">เปลี่ยนสถานะ</label>
+              <select id="admin-action-status" class="w-full py-2 px-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-semibold">
+                <option value="pending">รอรับเรื่อง</option>
+                <option value="processing">กำลังดำเนินการ</option>
+                <option value="completed">ดำเนินการแล้ว</option>
+                <option value="failed">ไม่สามารถดำเนินการได้</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">วันที่ดำเนินงานแล้วเสร็จ (ถ้ามี)</label>
+              <input type="date" id="admin-action-resdate" class="w-full py-2 px-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-english">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">บันทึกข้อความ / หมายเหตุแจ้งนักเรียน</label>
+            <textarea id="admin-action-notes" rows="3" placeholder="ช่างไฟฟ้าทำการแก้ไขแล้ว / งบประมาณไม่เพียงพอ..." class="w-full py-2 px-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-xs"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-5 border-t border-slate-200 dark:border-slate-700 flex items-center justify-end space-x-3 bg-slate-50/50 dark:bg-slate-800/50">
+        <button onclick="closeReportDetailModal()" class="py-2 px-5 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-xs font-bold transition">
+          ปิดหน้าต่าง
+        </button>
+        <button id="admin-save-report-btn" onclick="saveReportFromAdmin()" class="py-2 px-6 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold shadow-md shadow-emerald-600/30 hidden">
+          บันทึกการแก้ไข
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Admin News Editor Modal -->
+  <div id="admin-news-modal" class="fixed inset-0 bg-slate-950/70 z-50 flex items-center justify-center p-4 hidden modal-backdrop">
+    <div class="bg-white dark:bg-slate-800 rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-100 dark:border-slate-700 modal-panel">
+      <div class="p-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+        <h3 id="news-editor-title" class="font-bold text-sm text-slate-800 dark:text-white">เพิ่ม/แก้ไขข่าวประชาสัมพันธ์</h3>
+        <button onclick="closeNewsModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+      <form id="form-news-editor" onsubmit="event.preventDefault(); saveNewsItem();">
+        <input type="hidden" id="news-editor-id">
+        <div class="p-6 space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">หัวข้อข่าว <span class="text-rose-500">*</span></label>
+            <input type="text" id="news-editor-headline" required placeholder="ใส่หัวข้อหลักของข่าวประกาศ" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">วันที่เผยแพร่ <span class="text-rose-500">*</span></label>
+            <input type="date" id="news-editor-date" required class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-english">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">เนื้อหาข่าวประกาศอย่างละเอียด <span class="text-rose-500">*</span></label>
+            <textarea id="news-editor-content" rows="6" required placeholder="ระบุเนื้อหารายละเอียดที่จะประกาศให้นักเรียนทราบ..." class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ลิงก์รูปภาพปก (Unsplash หรือ URL รูปภาพ หรือเลือกอัปโหลดไฟล์)</label>
+            <input type="text" id="news-editor-img-url" placeholder="https://images.unsplash.com/..." class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs text-slate-500">
+            <div class="mt-2 flex items-center space-x-2">
+              <span class="text-xs text-slate-400">หรืออัปโหลดรูปภาพ:</span>
+              <input type="file" id="news-editor-img-file" accept="image/*" class="text-xs text-slate-400">
+            </div>
+            <div id="news-editor-img-preview" class="mt-3 h-32 w-full hidden rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100">
+              <img id="news-preview-element" src="" class="w-full h-full object-cover">
+            </div>
+          </div>
+        </div>
+        <div class="p-5 border-t border-slate-200 dark:border-slate-700 flex items-center justify-end space-x-3 bg-slate-50 dark:bg-slate-800/50">
+          <button type="button" onclick="closeNewsModal()" class="py-2 px-5 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-xs font-bold">
+            ยกเลิก
+          </button>
+          <button type="submit" class="py-2 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-extrabold shadow-md shadow-blue-600/30">
+            บันทึกข่าวสาร
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 4. Admin Link Editor Modal -->
+  <div id="admin-link-modal" class="fixed inset-0 bg-slate-950/70 z-50 flex items-center justify-center p-4 hidden modal-backdrop">
+    <div class="bg-white dark:bg-slate-800 rounded-3xl max-w-md w-full shadow-2xl border border-slate-100 dark:border-slate-700 modal-panel">
+      <div class="p-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+        <h3 id="link-editor-title" class="font-bold text-sm text-slate-800 dark:text-white">เพิ่ม/แก้ไขลิงก์สำคัญ</h3>
+        <button onclick="closeLinkModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+      <form id="form-link-editor" onsubmit="event.preventDefault(); saveLinkItem();">
+        <input type="hidden" id="link-editor-id">
+        <div class="p-6 space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">หมวดหมู่ลิงก์ <span class="text-rose-500">*</span></label>
+            <select id="link-editor-category" required class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-semibold">
+              <option value="แบบประเมินและสำรวจ">แบบประเมินและสำรวจ (เช่น Google Forms)</option>
+              <option value="รับสมัครและลงทะเบียน">รับสมัครและลงทะเบียนกิจกรรม</option>
+              <option value="เว็บไซต์โรงเรียน">เว็บไซต์และพอร์ทัลโรงเรียน</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ชื่อเรียกตัวลิงก์ (ตัวอักษรบนปุ่ม) <span class="text-rose-500">*</span></label>
+            <input type="text" id="link-editor-name" required placeholder="เช่น แบบสำรวจสวัสดิการโรงเรียน" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ที่อยู่ URL ปลายทาง <span class="text-rose-500">*</span></label>
+            <input type="url" id="link-editor-url" required placeholder="https://forms.google.com/..." class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-english">
+          </div>
+        </div>
+        <div class="p-5 border-t border-slate-200 dark:border-slate-700 flex items-center justify-end space-x-3 bg-slate-50 dark:bg-slate-800/50">
+          <button type="button" onclick="closeLinkModal()" class="py-2 px-5 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-xs font-bold">
+            ยกเลิก
+          </button>
+          <button type="submit" class="py-2 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-extrabold shadow-md shadow-blue-600/30">
+            บันทึกลิงก์
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 5. Admin Achievement Editor Modal -->
+  <div id="admin-achievement-modal" class="fixed inset-0 bg-slate-950/70 z-50 flex items-center justify-center p-4 hidden modal-backdrop">
+    <div class="bg-white dark:bg-slate-800 rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-100 dark:border-slate-700 modal-panel">
+      <div class="p-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+        <h3 id="achievement-editor-title" class="font-bold text-sm text-slate-800 dark:text-white">เพิ่ม/แก้ไขผลงานการปฏิบัติงาน</h3>
+        <button onclick="closeAchievementModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+      <form id="form-achievement-editor" onsubmit="event.preventDefault(); saveAchievementItem();">
+        <input type="hidden" id="achievement-editor-id">
+        <div class="p-6 space-y-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ชื่อโครงการ / หัวข้อผลงาน <span class="text-rose-500">*</span></label>
+            <input type="text" id="achievement-editor-headline" required placeholder="เช่น ทาสีทางม้าลายเสร็จสิ้น" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs">
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">วันที่สำเร็จการดำเนินงาน <span class="text-rose-500">*</span></label>
+              <input type="date" id="achievement-editor-date" required class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-english">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ฝ่ายรับผิดชอบโครงการ <span class="text-rose-500">*</span></label>
+              <input type="text" id="achievement-editor-responsible" required placeholder="เช่น ฝ่ายอาคารและบริการ" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs">
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">รายละเอียดผลงานและการเปลี่ยนแปลง <span class="text-rose-500">*</span></label>
+            <textarea id="achievement-editor-content" rows="5" required placeholder="บรรยายรายละเอียดปัญหา สิ่งที่สภานักเรียนทำ และผลลัพธ์ของการจัดโครงการ..." class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs"></textarea>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">ลิงก์ภาพถ่ายประกอบ หรือเลือกอัปโหลดรูปภาพ</label>
+            <input type="text" id="achievement-editor-img-url" placeholder="https://images.unsplash.com/..." class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl text-xs text-slate-500">
+            <div class="mt-2 flex items-center space-x-2">
+              <span class="text-xs text-slate-400">หรืออัปโหลดรูปภาพ:</span>
+              <input type="file" id="achievement-editor-img-file" accept="image/*" class="text-xs text-slate-400">
+            </div>
+            <div id="achievement-editor-img-preview" class="mt-3 h-32 w-full hidden rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100">
+              <img id="achievement-preview-element" src="" class="w-full h-full object-cover">
+            </div>
+          </div>
+        </div>
+        <div class="p-5 border-t border-slate-200 dark:border-slate-700 flex items-center justify-end space-x-3 bg-slate-50 dark:bg-slate-800/50">
+          <button type="button" onclick="closeAchievementModal()" class="py-2 px-5 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-xs font-bold">
+            ยกเลิก
+          </button>
+          <button type="submit" class="py-2 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-extrabold shadow-md shadow-blue-600/30">
+            บันทึกผลงาน
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 6. Admin Song Editor Modal -->
+  <div id="admin-song-modal" class="fixed inset-0 bg-slate-950/70 z-50 flex items-center justify-center p-4 hidden modal-backdrop">
+    <div class="bg-white dark:bg-slate-800 rounded-3xl max-w-md w-full shadow-2xl border border-slate-100 dark:border-slate-700 modal-panel">
+      <div class="p-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+        <h3 class="font-bold text-sm text-slate-800 dark:text-white">จัดการสถานะคิวเพลง</h3>
+        <button onclick="closeAdminSongModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+      <form id="form-admin-song" onsubmit="event.preventDefault(); saveSongStatus();">
+        <input type="hidden" id="admin-song-id">
+        <div class="p-6 space-y-4 text-xs">
+          <div>
+            <span class="text-slate-400 block mb-0.5 font-bold">ชื่อเพลง:</span>
+            <span id="admin-song-lbl-title" class="font-extrabold text-slate-900 dark:text-white text-base">TITLE</span>
+          </div>
+          <div>
+            <span class="text-slate-400 block mb-0.5 font-bold">ศิลปิน:</span>
+            <span id="admin-song-lbl-artist" class="font-bold text-slate-700 dark:text-slate-200">ARTIST</span>
+          </div>
+          <div class="border-t border-slate-100 dark:border-slate-700/50 pt-3">
+            <label class="block font-bold text-slate-500 dark:text-slate-400 mb-1">เปลี่ยนสถานะคิวเพลง <span class="text-rose-500">*</span></label>
+            <select id="admin-song-status" required class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl font-semibold">
+              <option value="pending">รอคิว (Pending)</option>
+              <option value="approved">เตรียมเปิด (Approved)</option>
+              <option value="played">เปิดแล้ว (Played)</option>
+              <option value="rejected">ไม่ผ่านการคัดเลือก (Rejected)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-bold text-slate-500 dark:text-slate-400 mb-1">ข้อความตอบกลับถึงผู้ขอเพลง (เช่น คิวถัดไป / เพลงไม่เหมาะสม)</label>
+            <textarea id="admin-song-feedback" rows="3" placeholder="ระบุเหตุผลหรือแจ้งเวลาที่จะเปิดเพลง..." class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl"></textarea>
+          </div>
+        </div>
+        <div class="p-5 border-t border-slate-200 dark:border-slate-700 flex items-center justify-end space-x-3 bg-slate-50/50 dark:bg-slate-800/50">
+          <button type="button" onclick="closeAdminSongModal()" class="py-2 px-5 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-xs font-bold">
+            ยกเลิก
+          </button>
+          <button type="submit" class="py-2 px-6 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-extrabold shadow-md shadow-emerald-600/30">
+            บันทึกสถานะ
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 7. Student Lost & Found Form Modal -->
+  <div id="student-lostfound-modal" class="fixed inset-0 bg-slate-950/70 z-50 flex items-center justify-center p-4 hidden modal-backdrop">
+    <div class="bg-white dark:bg-slate-800 rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-100 dark:border-slate-700 modal-panel">
+      <div class="p-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+        <h3 id="lf-modal-title" class="font-extrabold text-base text-slate-900 dark:text-white">แจ้งของหาย / เก็บของได้</h3>
+        <button onclick="closeLostFoundModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+      <div class="px-6 pt-5">
+        <div class="flex flex-wrap gap-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 p-2">
+          <button type="button" onclick="openLostFoundModal('lost')" class="flex-1 px-3 py-2 rounded-xl text-xs font-bold bg-rose-600 text-white shadow-sm">แจ้งของหาย</button>
+          <button type="button" onclick="openLostFoundModal('found')" class="flex-1 px-3 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow-sm">แจ้งเก็บได้</button>
+          <button type="button" onclick="openLostFoundModal('money')" class="flex-1 px-3 py-2 rounded-xl text-xs font-bold bg-amber-600 text-white shadow-sm">แจ้งเงินหาย/เก็บเงินได้</button>
+        </div>
+      </div>
+      <form id="form-lostfound-report" onsubmit="event.preventDefault(); submitLostFoundReport();" class="p-6 space-y-4 text-xs">
+        <input type="hidden" id="lf-type">
+
+        <div id="lf-money-type-section" class="hidden p-4 bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 rounded-2xl">
+          <label class="block font-extrabold text-amber-900 dark:text-amber-200 mb-2 text-xs">เลือกประเภทเงิน</label>
+          <div class="flex gap-3 flex-wrap">
+            <label class="flex items-center gap-2 cursor-pointer rounded-xl border border-amber-200 bg-white px-4 py-2.5 text-amber-800 dark:border-amber-800 dark:bg-slate-900 dark:text-amber-200 shadow-sm font-semibold">
+              <input type="radio" name="money-type" value="lost" onclick="document.getElementById('lf-type').value = 'money_lost'" class="w-4 h-4 text-amber-600 focus:ring-amber-500">
+              <span class="text-xs">💵 เงินหาย</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer rounded-xl border border-amber-200 bg-white px-4 py-2.5 text-amber-800 dark:border-amber-800 dark:bg-slate-900 dark:text-amber-200 shadow-sm font-semibold">
+              <input type="radio" name="money-type" value="found" onclick="document.getElementById('lf-type').value = 'money_found'" class="w-4 h-4 text-amber-600 focus:ring-amber-500">
+              <span class="text-xs">🧾 เก็บเงินได้</span>
+            </label>
+          </div>
+        </div>
+        
+        <!-- Reporter Info -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-slate-100 dark:border-slate-700/50 pb-4">
+          <div>
+            <label class="block font-bold text-slate-500 dark:text-slate-400 mb-1">ชื่อผู้แจ้ง <span class="text-rose-500">*</span></label>
+            <input type="text" id="lf-reporter-name" required class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-500 dark:text-slate-400 mb-1">รหัสนักเรียน <span class="text-rose-500">*</span></label>
+            <input type="text" id="lf-student-id" required maxlength="5" class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 font-english">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-500 dark:text-slate-400 mb-1">ห้องเรียน <span class="text-rose-500">*</span></label>
+            <input type="text" id="lf-classroom" required placeholder="เช่น ม.6/1" class="w-full py-2 px-3 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+        </div>
+
+        <div id="lf-item-name-section">
+          <label id="lf-item-name-label" class="block font-bold text-slate-500 dark:text-slate-400 mb-1">ชื่อสิ่งของ / รายการ <span class="text-rose-500">*</span></label>
+          <input type="text" id="lf-item-name" required placeholder="เช่น กระเป๋านักเรียน, โทรศัพท์, สมุด" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label id="lf-location-label" class="block font-bold text-slate-500 dark:text-slate-400 mb-1">สถานที่ <span class="text-rose-500">*</span></label>
+            <input type="text" id="lf-room-location" required placeholder="เช่น ห้อง 421 / โรงอาหาร" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label id="lf-date-label" class="block font-bold text-slate-500 dark:text-slate-400 mb-1">วันที่และเวลา <span class="text-rose-500">*</span></label>
+            <input type="datetime-local" id="lf-datetime" required class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl font-english focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-500 dark:text-slate-400 mb-1.5">หมวดหมู่สิ่งของ <span class="text-rose-500">*</span></label>
+          <div id="lf-category-options" class="grid grid-cols-2 gap-2"></div>
+          <input type="hidden" id="lf-category" value="others">
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-500 dark:text-slate-400 mb-1">รายละเอียดเพิ่มเติม / ตำหนิเด่นชัด</label>
+          <textarea id="lf-description" rows="3" placeholder="เช่น มีรอยขีดข่วนสีแดง, ใส่เคสสีเขียวมินต์..." class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-500 dark:text-slate-400 mb-1">ช่องทางติดต่อกลับ / จุดฝากของ <span class="text-rose-500">*</span></label>
+          <input type="text" id="lf-contact" required placeholder="เช่น ห้อง ม.6/1 หรือเบอร์ 08x-xxxxxxx / ฝากไว้สภานักเรียน" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <div id="lf-image-upload-section">
+          <label class="block font-bold text-slate-500 dark:text-slate-400 mb-1">อัปโหลดรูปภาพสิ่งของ</label>
+          <div id="lf-drag-area" class="upload-zone py-5 px-3 rounded-2xl flex flex-col items-center justify-center cursor-pointer bg-slate-50 dark:bg-slate-800/80 border border-dashed border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition">
+            <i class="fa-regular fa-image text-3xl text-blue-500 mb-1"></i>
+            <span class="text-[11px] text-slate-600 dark:text-slate-300 text-center font-bold">ลากไฟล์รูปภาพ หรือคลิกเพื่อเลือกไฟล์</span>
+            <input type="file" id="lf-image-input" accept="image/*" class="hidden">
+          </div>
+          <div id="lf-image-preview-container" class="mt-3 hidden rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 max-h-40">
+            <img id="lf-image-preview" src="" class="w-full h-full object-contain">
+          </div>
+        </div>
+
+        <div class="p-5 border-t border-slate-200 dark:border-slate-700 flex items-center justify-end space-x-3 bg-slate-50/50 dark:bg-slate-800/50 -mx-6 -mb-6 mt-4">
+          <button type="button" onclick="closeLostFoundModal()" class="py-2 px-5 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-xs font-bold">
+            ยกเลิก
+          </button>
+          <button type="submit" class="py-2 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-extrabold shadow-md shadow-blue-600/30">
+            ส่งข้อมูล
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 8. Admin Lost & Found Editor Modal -->
+  <div id="admin-lostfound-modal" class="fixed inset-0 bg-slate-950/70 z-50 flex items-center justify-center p-4 hidden modal-backdrop">
+    <div class="bg-white dark:bg-slate-800 rounded-3xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-100 dark:border-slate-700 modal-panel">
+      <div class="p-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+        <h3 class="font-bold text-sm text-slate-800 dark:text-white">จัดการสถานะของหายได้คืน (Admin)</h3>
+        <button onclick="closeAdminLostFoundModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+      <form id="form-admin-lostfound" onsubmit="event.preventDefault(); saveAdminLostFoundStatus();" class="p-6 space-y-4 text-xs">
+        <input type="hidden" id="admin-lf-id">
+        
+        <div class="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl space-y-2 border border-slate-100 dark:border-slate-800">
+          <div class="grid grid-cols-2 gap-2 text-slate-500">
+            <div>ประเภท: <span id="admin-lf-lbl-type" class="font-bold text-slate-800 dark:text-white">TYPE</span></div>
+            <div>ชื่อสิ่งของ: <span id="admin-lf-lbl-name" class="font-bold text-slate-800 dark:text-white">NAME</span></div>
+            <div>สถานที่: <span id="admin-lf-lbl-location" class="font-semibold text-slate-700 dark:text-slate-200">LOC</span></div>
+            <div>หมวดหมู่: <span id="admin-lf-lbl-category" class="font-semibold text-slate-700 dark:text-slate-200">CATEGORY</span></div>
+            <div>วันเวลา: <span id="admin-lf-lbl-datetime" class="font-semibold text-slate-700 dark:text-slate-200">DATE</span></div>
+            <div class="col-span-2">ผู้รายงาน: <span id="admin-lf-lbl-reporter" class="font-semibold text-slate-700 dark:text-slate-200">REP</span></div>
+            <div class="col-span-2">รายละเอียด: <span id="admin-lf-lbl-desc" class="font-semibold text-slate-700 dark:text-slate-200">DESC</span></div>
+            <div class="col-span-2">ช่องทางติดต่อ: <span id="admin-lf-lbl-contact" class="font-extrabold text-blue-600 dark:text-blue-400">CONTACT</span></div>
+          </div>
+          <div id="admin-lf-img-container" class="mt-2 h-36 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 hidden">
+            <img id="admin-lf-img" src="" class="w-full h-full object-contain">
+          </div>
+        </div>
+
+        <div class="border-t border-slate-100 dark:border-slate-700/50 pt-3">
+          <label class="block font-bold text-slate-500 dark:text-slate-400 mb-1">เปลี่ยนสถานะ <span class="text-rose-500">*</span></label>
+          <select id="admin-lf-status" required class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl font-semibold">
+            <option value="searching">กำลังตามหา / รอรับของ (Searching)</option>
+            <option value="found_matching">พบของที่สอดคล้อง / ติดต่อรับ (Found Matching)</option>
+            <option value="returned">ส่งคืนเจ้าของแล้ว (Returned)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-500 dark:text-slate-400 mb-1">วันที่ส่งคืน (หากดำเนินการเสร็จสิ้น)</label>
+          <input type="date" id="admin-lf-resdate" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl font-english">
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-500 dark:text-slate-400 mb-1">หมายเหตุเพิ่มเติมจากแอดมิน (เช่น ของฝากไว้ที่ห้องสภาสภานักเรียน อาคาร 2)</label>
+          <textarea id="admin-lf-notes" rows="3" placeholder="ระบุข้อมูลการนัดรับ หรือหมายเหตุการส่งคืน..." class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl"></textarea>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <input id="admin-lf-pinned" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-yellow-500 focus:ring-yellow-500">
+          <label for="admin-lf-pinned" class="text-sm font-semibold text-slate-700 dark:text-slate-300">ปักหมุดรายการนี้ให้อยู่ด้านบน</label>
+        </div>
+
+        <div class="p-5 border-t border-slate-200 dark:border-slate-700 flex items-center justify-end space-x-3 bg-slate-50/50 dark:bg-slate-800/50 -mx-6 -mb-6 mt-4">
+          <button type="button" onclick="closeAdminLostFoundModal()" class="py-2 px-5 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-xs font-bold">
+            ยกเลิก
+          </button>
+          <button type="submit" class="py-2 px-6 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-extrabold shadow-md shadow-emerald-600/30">
+            บันทึกข้อมูล
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="fixed inset-0 bg-slate-950/70 z-[999] flex items-center justify-center p-4 hidden modal-backdrop">
+    <div class="flex flex-col items-center bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-2xl">
+      <i class="fa-solid fa-spinner text-4xl text-blue-600 dark:text-blue-400 animate-spin mb-4"></i>
+      <span class="text-xs font-extrabold tracking-wide">กำลังดำเนินการประมวลผล...</span>
+    </div>
+  </div>
+
+  <!-- Load Database Seed Data -->
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<!-- Load Database Seed Data (ลบออกภายหลังเมื่อย้ายไป Supabase ทั้งหมด) -->
+<script src="data.js?v=20260804-1"></script>
+
+<!-- Main -->
+<script src="app.js?v=20260804-1"></script>
+</body>
+</html>
