@@ -1,0 +1,16 @@
+ADMIN SETUP
+============
+
+Admin registration is disabled on the public website.
+
+The site owner creates an Auth user in Supabase, then creates/updates the
+matching row in public.profiles:
+
+- id = Auth user's UUID
+- name = Admin name
+- classroom = Admin classroom/unit
+- role = admin
+
+Passwords are managed by Supabase Auth and are NOT stored in profiles.
+
+Students continue to self-register through the student registration flow.

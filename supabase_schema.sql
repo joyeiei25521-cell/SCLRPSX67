@@ -419,30 +419,3 @@ values (
   'https://example.com',
   'เว็บไซต์โรงเรียน'
 ) on conflict (id) do nothing;
-
-
--- ============================================================
--- PROFILE ROLE + CLASSROOM
--- Students and Admins share the same profiles table.
--- role: student | admin
--- Passwords are handled by Supabase Auth, never stored here.
--- ============================================================
-
-alter table public.profiles
-  add column if not exists classroom text;
-
-alter table public.profiles
-  add column if not exists role text not null default 'student';
-
-do $$
-begin
-  if not exists (
-    select 1
-    from pg_constraint
-    where conname = 'profiles_role_check'
-  ) then
-    alter table public.profiles
-      add constraint profiles_role_check
-      check (role in ('student', 'admin'));
-  end if;
-end $$;
