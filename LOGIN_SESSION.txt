@@ -1,0 +1,7 @@
+LOGIN SESSION
+=============
+Supabase Auth sessions are configured to persist and auto-refresh.
+Users remain logged in after closing/reopening the browser until they
+explicitly press Logout or clear the site's storage/cookies.
+
+Do NOT store passwords in localStorage.

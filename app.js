@@ -1711,3 +1711,16 @@ function removeChatAttachment(role, index) {
   const target = document.getElementById(role === 'student' ? 'student-chat-attachments' : 'admin-chat-attachments');
   if (target) target.innerHTML = list.map((a,i) => `<div class="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700"><img src="${scEscape(a.dataUrl)}" class="w-full h-20 object-cover"><button type="button" onclick="removeChatAttachment('${role}',${i})" class="absolute top-1 right-1 w-6 h-6 rounded-full bg-rose-600 text-white">×</button></div>`).join('');
 }
+
+
+// Restore the Supabase session automatically when the page is reopened.
+// The user stays logged in until they explicitly press Logout or clear site data.
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (session?.user) {
+    try {
+      await loadCurrentUser?.();
+    } catch (e) {
+      console.warn('Session restored, but profile refresh failed:', e);
+    }
+  }
+});
