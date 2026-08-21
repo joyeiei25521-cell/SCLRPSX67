@@ -497,7 +497,72 @@ async function submitLogin(role) {
 }
 
 async function submitRegister() {
-  showToast('การสมัครสมาชิกจากหน้านี้ถูกปิดไว้ กรุณารับรหัสนักเรียนและรหัสผ่านจากผู้ดูแลระบบ', 'info');
+  if (!isSupabaseReady()) {
+    showLoginError('ยังไม่ได้ตั้งค่า Supabase กรุณาตั้งค่า Project URL และ Publishable Key ก่อน');
+    return;
+  }
+
+  const name = document.getElementById('register-student-name')?.value.trim();
+  const studentId = document.getElementById('register-student-id')?.value.trim();
+  const classroom = document.getElementById('register-student-class')?.value.trim();
+  const password = document.getElementById('register-student-pass')?.value || '';
+  const confirm = document.getElementById('register-student-pass-confirm')?.value || '';
+
+  if (!name || !/^\d{5}$/.test(studentId) || !classroom || password.length < 6) {
+    showLoginError('กรุณากรอกชื่อ ห้องเรียน รหัสนักเรียน 5 หลัก และรหัสผ่านอย่างน้อย 6 ตัวอักษร');
+    return;
+  }
+  if (password !== confirm) {
+    showLoginError('รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน');
+    return;
+  }
+
+  const button = document.querySelector('#form-register-student button[type=submit]');
+  if (button) { button.disabled = true; button.dataset.oldText = button.innerHTML; button.innerHTML = '<i class=\"fa-solid fa-spinner fa-spin mr-1.5\"></i>กำลังสร้างบัญชี...'; }
+  try {
+    const { data, error } = await sb.functions.invoke('create-student', {
+      body: { student_id: studentId, name, classroom, password }
+    });
+    if (error) throw error;
+    if (!data?.ok) throw new Error(data?.error || 'สร้างบัญชีไม่สำเร็จ');
+
+    // The Edge Function creates the internal Auth identity. The student still only uses ID + password.
+    const { data: loginData, error: loginError } = await sb.auth.signInWithPassword({
+      email: schoolAuthEmail(studentId),
+      password
+    });
+    if (loginError || !loginData.user) throw loginError || new Error('เข้าสู่ระบบหลังสมัครไม่สำเร็จ');
+
+    const { data: profile, error: profileError } = await sb
+      .from('profiles')
+      .select('id,student_id,name,role,classroom,email')
+      .eq('id', loginData.user.id)
+      .maybeSingle();
+    if (profileError || !profile || profile.role !== 'student') {
+      await sb.auth.signOut();
+      throw profileError || new Error('ไม่พบข้อมูลนักเรียน');
+    }
+
+    currentUser = mapSupabaseProfile(profile);
+    currentRole = 'student';
+    await refreshRemoteReports();
+    updateUIAuth();
+    document.getElementById('form-register-student')?.reset();
+    showToast(`สมัครสมาชิกสำเร็จ ยินดีต้อนรับ ${currentUser.name}`, 'success');
+    switchTab('student-news');
+  } catch (err) {
+    console.error('Student registration failed:', err);
+    const msg = String(err?.message || err || '');
+    if (msg.toLowerCase().includes('already') || msg.includes('มีอยู่แล้ว') || msg.includes('duplicate')) {
+      showLoginError('รหัสนักเรียนนี้มีบัญชีอยู่แล้ว กรุณาเข้าสู่ระบบ');
+    } else if (msg.toLowerCase().includes('rate limit')) {
+      showLoginError('ระบบจำกัดคำขอชั่วคราว กรุณารอสักครู่แล้วลองใหม่');
+    } else {
+      showLoginError(msg || 'สมัครสมาชิกไม่สำเร็จ');
+    }
+  } finally {
+    if (button) { button.disabled = false; button.innerHTML = button.dataset.oldText || '<i class=\"fa-solid fa-user-plus mr-1.5\"></i>สมัครสมาชิก'; }
+  }
 }
 
 function updateUIAuth() {

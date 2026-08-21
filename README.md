@@ -19,7 +19,7 @@
 2. เปิด SQL Editor
 3. รัน `supabase_schema.sql` ทั้งไฟล์
 4. Authentication > Providers > Email เปิดใช้งาน และปิด Confirm email สำหรับระบบรหัสนักเรียน alias `.local`
-5. สร้าง Admin ใน Authentication > Users ด้วย `admin@school.local`
+5. สร้าง Admin ใน Authentication > Users ตามวิธีที่ตั้งไว้สำหรับแอดมิน
 6. คัดลอก UUID ของ Admin แล้วรัน INSERT ที่ท้าย `supabase_schema.sql`
 7. เปิด `supabase-config.js` แล้วใส่ Project URL + Publishable Key
 
@@ -41,7 +41,7 @@
 
 ## Login แบบโรงเรียน (ไม่มี Gmail ในหน้าเว็บ)
 
-เวอร์ชันนี้ปิดการสมัครสมาชิกจากหน้าเว็บ นักเรียนล็อกอินด้วย **รหัสนักเรียน + รหัสผ่าน** เท่านั้น และไม่ต้องกรอก Gmail/อีเมล ผู้ดูแลเป็นผู้สร้างบัญชีนักเรียนในระบบ Auth แล้วให้นักเรียนใช้รหัสที่ได้รับ
+นักเรียน **สมัครบัญชีเองได้** ด้วย **ชื่อ + รหัสนักเรียน 5 หลัก + ห้องเรียน + รหัสผ่าน** จากหน้าเว็บ แล้วระบบ Edge Function จะสร้างบัญชี Auth ภายในให้อัตโนมัติ จากนั้นเว็บจะล็อกอินให้ทันที นักเรียนไม่ต้องกรอก Gmail หรืออีเมล
 
 > หมายเหตุทางเทคนิค: Supabase Auth แบบ password ต้องมีตัวระบุรูปแบบอีเมลภายใน แต่เว็บจะสร้างค่า `account-<รหัสนักเรียน>@school-auth.invalid` อัตโนมัติและไม่แสดงให้ผู้ใช้เห็น ค่าอีเมลนี้ไม่ใช่ Gmail และไม่มีการส่งอีเมลจากระบบนี้
 
@@ -53,3 +53,10 @@
 5. สร้างแถวใน `profiles` ให้ UUID ตรงกับ Auth user และ `student_id` เป็น `64123`
 
 ไม่ต้องเปิด public email signups เพราะเว็บเวอร์ชันนี้ไม่ใช้ `signUp()` จากฝั่งนักเรียนอีกแล้ว
+
+
+### เปิดให้สมัครเอง
+- ไม่ต้องเปิด Public Email Signups ก็ได้ เพราะ Edge Function ใช้ Admin API สร้าง Auth user และยืนยันบัญชีให้อัตโนมัติ
+- ต้อง Deploy Edge Function `create-student` และให้ function มี `SUPABASE_SERVICE_ROLE_KEY` ซึ่ง Supabase จัดการให้ใน runtime; ห้ามนำ key นี้มาใส่ frontend
+- ใน frontend ใช้เพียง Project URL + Publishable Key
+- นักเรียนสมัครจากหน้าเว็บ แล้วระบบจะสร้าง profile และเข้าสู่ระบบให้ทันที
