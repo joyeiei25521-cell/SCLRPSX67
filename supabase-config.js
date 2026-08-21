@@ -5,8 +5,8 @@
  * - Use the Project URL and Publishable Key from Supabase.
  * - NEVER put the service_role/secret key in this file or in browser code.
  */
-window.SUPABASE_URL = 'https://bgzmfmxcoimmmorlwyiq.supabase.co';
-window.SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_RoG44n0YduUs0lwJEFmbBA_A7hOszME';
+window.SUPABASE_URL = 'PASTE_YOUR_SUPABASE_PROJECT_URL_HERE';
+window.SUPABASE_PUBLISHABLE_KEY = 'PASTE_YOUR_SUPABASE_PUBLISHABLE_KEY_HERE';
 
 if (
   window.supabase &&

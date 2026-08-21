@@ -394,8 +394,11 @@ function toggleLoginRegister(type) {
 }
 
 function schoolAuthEmail(identifier) {
-  // Internal alias used by Supabase Auth so students can continue to log in with their school ID.
-  return `${String(identifier).trim().toLowerCase()}@school.local`;
+  // Internal Auth identifier only. Users NEVER type or see this value.
+  // Supabase Auth requires an email-shaped identifier for password auth,
+  // so the website keeps the real login UI as Student ID + Password.
+  const clean = String(identifier).trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+  return `account-${clean}@school-auth.invalid`;
 }
 
 function showLoginError(message) {
@@ -429,7 +432,7 @@ async function submitLogin(role) {
     });
 
     if (error || !data.user) {
-      showLoginError('รหัสนักเรียนหรือรหัสผ่านไม่ถูกต้อง');
+      showLoginError(error?.message?.toLowerCase().includes('rate limit') ? 'ระบบจำกัดการเข้าสู่ระบบชั่วคราว กรุณารอสักครู่แล้วลองใหม่' : 'รหัสนักเรียนหรือรหัสผ่านไม่ถูกต้อง');
       return;
     }
 
@@ -467,7 +470,7 @@ async function submitLogin(role) {
     });
 
     if (error || !data.user) {
-      showLoginError('ชื่อผู้ใช้ หรือรหัสผ่านไม่ถูกต้อง');
+      showLoginError(error?.message?.toLowerCase().includes('rate limit') ? 'ระบบจำกัดการเข้าสู่ระบบชั่วคราว กรุณารอสักครู่แล้วลองใหม่' : 'ชื่อผู้ใช้ หรือรหัสผ่านไม่ถูกต้อง');
       return;
     }
 
@@ -494,82 +497,7 @@ async function submitLogin(role) {
 }
 
 async function submitRegister() {
-  const name = document.getElementById('register-student-name').value.trim();
-  const id = document.getElementById('register-student-id').value.trim();
-  const sClass = document.getElementById('register-student-class').value.trim();
-  const pass = document.getElementById('register-student-pass').value;
-  const passConfirm = document.getElementById('register-student-pass-confirm').value;
-
-  if (!isSupabaseReady()) {
-    showToast('ยังไม่ได้ตั้งค่า Supabase', 'error');
-    return;
-  }
-  if (!/^\d{5}$/.test(id)) {
-    showToast('รหัสนักเรียนต้องเป็นตัวเลข 5 หลัก', 'error');
-    return;
-  }
-  if (pass !== passConfirm) {
-    showToast('รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน', 'error');
-    return;
-  }
-  if (pass.length < 6) {
-    showToast('รหัสผ่านควรมีอย่างน้อย 6 ตัวอักษร', 'error');
-    return;
-  }
-
-  const { data: existing, error: lookupError } = await sb
-    .from('profiles')
-    .select('id')
-    .eq('student_id', id)
-    .maybeSingle();
-
-  if (lookupError) {
-    showToast('ตรวจสอบรหัสนักเรียนไม่สำเร็จ', 'error');
-    return;
-  }
-  if (existing) {
-    showToast('รหัสนักเรียนนี้ถูกลงทะเบียนไว้แล้ว', 'error');
-    return;
-  }
-
-  const { data, error } = await sb.auth.signUp({
-    email: schoolAuthEmail(id),
-    password: pass,
-    options: {
-      data: {
-        student_id: id,
-        name,
-        classroom: sClass,
-        role: 'student'
-      }
-    }
-  });
-
-  if (error || !data.user) {
-    showToast(error?.message || 'ลงทะเบียนไม่สำเร็จ', 'error');
-    return;
-  }
-
-  const { error: profileError } = await sb.from('profiles').insert({
-    id: data.user.id,
-    student_id: id,
-    name,
-    classroom: sClass,
-    role: 'student',
-    email: schoolAuthEmail(id)
-  });
-
-  if (profileError) {
-    await sb.auth.signOut();
-    showToast('สร้างโปรไฟล์ไม่สำเร็จ: ' + profileError.message, 'error');
-    return;
-  }
-
-  currentUser = { id, authId: data.user.id, name, role: 'student', class: sClass, email: schoolAuthEmail(id) };
-  currentRole = 'student';
-  updateUIAuth();
-  showToast('ลงทะเบียนนักเรียนสำเร็จ', 'success');
-  switchTab('student-news');
+  showToast('การสมัครสมาชิกจากหน้านี้ถูกปิดไว้ กรุณารับรหัสนักเรียนและรหัสผ่านจากผู้ดูแลระบบ', 'info');
 }
 
 function updateUIAuth() {

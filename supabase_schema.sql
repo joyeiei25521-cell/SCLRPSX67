@@ -384,8 +384,11 @@ end $$;
 -- values ('YOUR_ADMIN_UUID','admin','ผู้ดูแลระบบ','admin','สภานักเรียน','admin@school.local')
 -- on conflict (id) do update set role='admin', name='ผู้ดูแลระบบ';
 --
--- Student login continues to use school ID -> <id>@school.local.
--- For this school-ID alias setup, disable email confirmation in Auth settings.
+-- The browser login UI uses ONLY student ID + password.
+-- Supabase Auth still needs an internal email-shaped identifier for password auth;
+-- the website generates account-<student_id>@school-auth.invalid internally and never displays it.
+-- Do NOT enable public signups. Student accounts should be created by an administrator.
+-- Email confirmation is not needed for these internal accounts.
 
 -- -------------------- OPTIONAL INITIAL CONTENT --------------------
 -- These match the sample records that were previously in data.js.
