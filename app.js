@@ -4,6 +4,113 @@
 
 // Local Storage Helper
 const DB_KEY = 'LRP_STUDENT_COUNCIL_DB';
+// Supabase-backed core data/auth.
+// The browser only uses the Supabase publishable key. Never put a service_role/secret key here.
+const sb = window.schoolSupabase || null;
+
+function isSupabaseReady() {
+  return !!(sb && typeof sb.auth?.signInWithPassword === 'function');
+}
+
+function mapSupabaseProfile(row) {
+  if (!row) return null;
+  return {
+    id: row.student_id,
+    authId: row.id,
+    name: row.name || '',
+    role: row.role || 'student',
+    class: row.classroom || '',
+    email: row.email || ''
+  };
+}
+
+function mapSupabaseReport(row) {
+  return {
+    id: row.id,
+    reporterName: row.reporter_name || '',
+    reporterId: row.reporter_id || '',
+    classroom: row.classroom || '',
+    title: row.title || '',
+    category: row.category || '',
+    location: row.location || '',
+    datetime: row.datetime || '',
+    description: row.description || '',
+    photos: Array.isArray(row.photos) ? row.photos : [],
+    status: row.status || 'pending',
+    resolutionDate: row.resolution_date || '',
+    notes: row.notes || ''
+  };
+}
+
+async function refreshRemoteReports() {
+  if (!isSupabaseReady()) return;
+  try {
+    let query = sb.from('reports').select('*').order('created_at', { ascending: false });
+    if (currentRole === 'student' && currentUser?.authId) {
+      query = query.eq('user_id', currentUser.authId);
+    } else if (currentRole !== 'admin') {
+      return;
+    }
+    const { data, error } = await query;
+    if (error) throw error;
+    db.reports = (data || []).map(mapSupabaseReport);
+    inMemoryDB = normalizeDB(db);
+  } catch (error) {
+    console.error('Supabase reports load failed:', error);
+    showToast('โหลดข้อมูลจากฐานข้อมูลไม่สำเร็จ', 'error');
+  }
+}
+
+async function refreshRemoteUsers() {
+  if (!isSupabaseReady() || currentRole !== 'admin') return;
+  try {
+    const { data, error } = await sb.from('profiles').select('id,student_id,name,role,classroom,email').order('created_at', { ascending: true });
+    if (error) throw error;
+    db.users = (data || []).map(mapSupabaseProfile);
+    inMemoryDB = normalizeDB(db);
+  } catch (error) {
+    console.error('Supabase profiles load failed:', error);
+  }
+}
+
+async function restoreSupabaseSession() {
+  if (!isSupabaseReady()) return false;
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session?.user) return false;
+
+    const { data: profile, error } = await sb
+      .from('profiles')
+      .select('id,student_id,name,role,classroom,email')
+      .eq('id', session.user.id)
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!profile) {
+      await sb.auth.signOut();
+      return false;
+    }
+
+    currentUser = mapSupabaseProfile(profile);
+    currentRole = currentUser.role === 'admin' ? 'admin' : 'student';
+    await refreshRemoteReports();
+    await refreshRemoteUsers();
+    return true;
+  } catch (error) {
+    console.error('Supabase session restore failed:', error);
+    return false;
+  }
+}
+
+async function signOutSupabase() {
+  if (isSupabaseReady()) {
+    const { error } = await sb.auth.signOut();
+    if (error) console.error('Supabase sign out failed:', error);
+  }
+  currentUser = null;
+  currentRole = 'guest';
+}
+
 
 function getDefaultDB() {
   const fallback = window.DEFAULT_DATA || {
@@ -242,12 +349,11 @@ function toggleDarkMode() {
 // Authentication Controller
 function handleAuthAction() {
   if (currentRole !== 'guest') {
-    // Logout
-    currentRole = 'guest';
-    currentUser = null;
-    updateUIAuth();
-    showToast('ออกจากระบบเรียบร้อยแล้ว', 'info');
-    switchTab('public-achievements');
+    signOutSupabase().finally(() => {
+      updateUIAuth();
+      showToast('ออกจากระบบเรียบร้อยแล้ว', 'info');
+      switchTab('public-achievements');
+    });
   } else {
     switchTab('login');
   }
@@ -287,81 +393,182 @@ function toggleLoginRegister(type) {
   }
 }
 
-function submitLogin(role) {
-  db = loadDB();
+function schoolAuthEmail(identifier) {
+  // Internal alias used by Supabase Auth so students can continue to log in with their school ID.
+  return `${String(identifier).trim().toLowerCase()}@school.local`;
+}
+
+function showLoginError(message) {
+  const errorBox = document.getElementById('login-error');
+  const errorMsg = document.getElementById('login-error-msg');
+  if (errorBox) errorBox.classList.remove('hidden');
+  if (errorMsg) errorMsg.innerText = message;
+}
+
+async function submitLogin(role) {
   const errorBox = document.getElementById('login-error');
   if (errorBox) errorBox.classList.add('hidden');
 
-  if (role === 'student') {
-    const studentId = document.getElementById('login-student-id').value.trim();
-    const studentPass = document.getElementById('login-student-pass').value.trim();
-    const user = db.users.find(u => u.id === studentId);
-
-    if (!user) {
-      if (errorBox) errorBox.classList.remove('hidden');
-      const errorMsg = document.getElementById('login-error-msg');
-      if (errorMsg) errorMsg.innerText = 'ไม่พบรหัสนักเรียนนี้ในระบบ กรุณาลงทะเบียนก่อน';
-      return;
-    }
-
-    // Validate password (supports legacy registered users defaulting password to '123' if not set)
-    const userPass = user.password || '123';
-    if (userPass !== studentPass) {
-      if (errorBox) errorBox.classList.remove('hidden');
-      const errorMsg = document.getElementById('login-error-msg');
-      if (errorMsg) errorMsg.innerText = 'รหัสนักเรียนหรือรหัสผ่านไม่ถูกต้อง';
-      return;
-    }
-
-    currentUser = user;
-    currentRole = 'student';
-    updateUIAuth();
-    showToast(`ยินดีต้อนรับ ${user.name}`, 'success');
-    switchTab('student-news');
-  } else if (role === 'admin') {
-    const user = document.getElementById('login-admin-user').value.trim();
-    const pass = document.getElementById('login-admin-pass').value.trim();
-
-    if (user === db.adminAuth.username && pass === db.adminAuth.password) {
-      currentUser = { name: 'ผู้ดูแลระบบ (Admin)', role: 'admin', class: 'สภานักเรียน' };
-      currentRole = 'admin';
-      updateUIAuth();
-      showToast('เข้าสู่ระบบผู้ดูแลเรียบร้อย', 'success');
-      switchTab('admin-dashboard');
-    } else {
-      if (errorBox) errorBox.classList.remove('hidden');
-      const errorMsg = document.getElementById('login-error-msg');
-      if (errorMsg) errorMsg.innerText = 'ชื่อผู้ใช้ หรือรหัสผ่านไม่ถูกต้อง';
-    }
-  }
-}
-
-function submitRegister() {
-  db = loadDB();
-  const name = document.getElementById('register-student-name').value.trim();
-  const id = document.getElementById('register-student-id').value.trim();
-  const sClass = document.getElementById('register-student-class').value.trim();
-  const pass = document.getElementById('register-student-pass').value.trim();
-  const passConfirm = document.getElementById('register-student-pass-confirm').value.trim();
-
-  if (db.users.some(u => u.id === id)) {
-    showToast('รหัสนักเรียนนี้ถูกลงทะเบียนไว้แล้ว', 'error');
+  if (!isSupabaseReady()) {
+    showLoginError('ยังไม่ได้ตั้งค่า Supabase กรุณาใส่ Project URL และ Publishable Key ใน supabase-config.js');
     return;
   }
 
+  if (role === 'student') {
+    const studentId = document.getElementById('login-student-id').value.trim();
+    const studentPass = document.getElementById('login-student-pass').value;
+
+    if (!studentId || !studentPass) {
+      showLoginError('กรุณากรอกรหัสนักเรียนและรหัสผ่าน');
+      return;
+    }
+
+    const { data, error } = await sb.auth.signInWithPassword({
+      email: schoolAuthEmail(studentId),
+      password: studentPass
+    });
+
+    if (error || !data.user) {
+      showLoginError('รหัสนักเรียนหรือรหัสผ่านไม่ถูกต้อง');
+      return;
+    }
+
+    const { data: profile, error: profileError } = await sb
+      .from('profiles')
+      .select('id,student_id,name,role,classroom,email')
+      .eq('id', data.user.id)
+      .maybeSingle();
+
+    if (profileError || !profile || profile.role !== 'student') {
+      await sb.auth.signOut();
+      showLoginError('ไม่พบบัญชีนักเรียนในระบบ');
+      return;
+    }
+
+    currentUser = mapSupabaseProfile(profile);
+    currentRole = 'student';
+    await refreshRemoteReports();
+    updateUIAuth();
+    showToast(`ยินดีต้อนรับ ${currentUser.name}`, 'success');
+    switchTab('student-news');
+
+  } else if (role === 'admin') {
+    const username = document.getElementById('login-admin-user').value.trim();
+    const pass = document.getElementById('login-admin-pass').value;
+
+    if (!username || !pass) {
+      showLoginError('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน');
+      return;
+    }
+
+    const { data, error } = await sb.auth.signInWithPassword({
+      email: schoolAuthEmail(username),
+      password: pass
+    });
+
+    if (error || !data.user) {
+      showLoginError('ชื่อผู้ใช้ หรือรหัสผ่านไม่ถูกต้อง');
+      return;
+    }
+
+    const { data: profile, error: profileError } = await sb
+      .from('profiles')
+      .select('id,student_id,name,role,classroom,email')
+      .eq('id', data.user.id)
+      .maybeSingle();
+
+    if (profileError || !profile || profile.role !== 'admin') {
+      await sb.auth.signOut();
+      showLoginError('บัญชีนี้ไม่มีสิทธิ์ผู้ดูแลระบบ');
+      return;
+    }
+
+    currentUser = mapSupabaseProfile(profile);
+    currentRole = 'admin';
+    await refreshRemoteReports();
+    await refreshRemoteUsers();
+    updateUIAuth();
+    showToast('เข้าสู่ระบบผู้ดูแลเรียบร้อย', 'success');
+    switchTab('admin-dashboard');
+  }
+}
+
+async function submitRegister() {
+  const name = document.getElementById('register-student-name').value.trim();
+  const id = document.getElementById('register-student-id').value.trim();
+  const sClass = document.getElementById('register-student-class').value.trim();
+  const pass = document.getElementById('register-student-pass').value;
+  const passConfirm = document.getElementById('register-student-pass-confirm').value;
+
+  if (!isSupabaseReady()) {
+    showToast('ยังไม่ได้ตั้งค่า Supabase', 'error');
+    return;
+  }
+  if (!/^\d{5}$/.test(id)) {
+    showToast('รหัสนักเรียนต้องเป็นตัวเลข 5 หลัก', 'error');
+    return;
+  }
   if (pass !== passConfirm) {
     showToast('รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน', 'error');
     return;
   }
+  if (pass.length < 6) {
+    showToast('รหัสผ่านควรมีอย่างน้อย 6 ตัวอักษร', 'error');
+    return;
+  }
 
-  const newUser = { id, name, password: pass, role: 'student', class: sClass };
-  db.users.push(newUser);
-  saveDB(db);
+  const { data: existing, error: lookupError } = await sb
+    .from('profiles')
+    .select('id')
+    .eq('student_id', id)
+    .maybeSingle();
 
-  currentUser = newUser;
+  if (lookupError) {
+    showToast('ตรวจสอบรหัสนักเรียนไม่สำเร็จ', 'error');
+    return;
+  }
+  if (existing) {
+    showToast('รหัสนักเรียนนี้ถูกลงทะเบียนไว้แล้ว', 'error');
+    return;
+  }
+
+  const { data, error } = await sb.auth.signUp({
+    email: schoolAuthEmail(id),
+    password: pass,
+    options: {
+      data: {
+        student_id: id,
+        name,
+        classroom: sClass,
+        role: 'student'
+      }
+    }
+  });
+
+  if (error || !data.user) {
+    showToast(error?.message || 'ลงทะเบียนไม่สำเร็จ', 'error');
+    return;
+  }
+
+  const { error: profileError } = await sb.from('profiles').insert({
+    id: data.user.id,
+    student_id: id,
+    name,
+    classroom: sClass,
+    role: 'student',
+    email: schoolAuthEmail(id)
+  });
+
+  if (profileError) {
+    await sb.auth.signOut();
+    showToast('สร้างโปรไฟล์ไม่สำเร็จ: ' + profileError.message, 'error');
+    return;
+  }
+
+  currentUser = { id, authId: data.user.id, name, role: 'student', class: sClass, email: schoolAuthEmail(id) };
   currentRole = 'student';
   updateUIAuth();
-  showToast('ลงทะเบียนนักเรียนและกำหนดรหัสผ่านสำเร็จ', 'success');
+  showToast('ลงทะเบียนนักเรียนสำเร็จ', 'success');
   switchTab('student-news');
 }
 
@@ -624,8 +831,13 @@ function renderReportImagePreviews() {
   `).join('');
 }
 
-function submitProblemReport() {
-  db = loadDB();
+async function submitProblemReport() {
+  if (currentRole !== 'student' || !currentUser?.authId) {
+    showToast('กรุณาเข้าสู่ระบบนักเรียนก่อนแจ้งปัญหา', 'error');
+    switchTab('login');
+    return;
+  }
+
   const name = document.getElementById('report-form-name').value.trim();
   const studentId = document.getElementById('report-form-id').value.trim();
   const classroom = document.getElementById('report-form-class').value.trim();
@@ -635,26 +847,47 @@ function submitProblemReport() {
   const datetime = document.getElementById('report-datetime').value;
   const description = document.getElementById('report-desc').value.trim();
 
-  const newReport = {
-    id: `REP-${String((db.reports || []).length + 1).padStart(3, '0')}`,
-    reporterName: name,
-    reporterId: studentId,
+  if (!title || !category || !location || !description) {
+    showToast('กรุณากรอกข้อมูลให้ครบถ้วน', 'error');
+    return;
+  }
+
+  if (!isSupabaseReady()) {
+    showToast('ยังไม่ได้ตั้งค่า Supabase', 'error');
+    return;
+  }
+
+  const reportId = `REP-${Date.now().toString(36).toUpperCase()}`;
+
+  const payload = {
+    id: reportId,
+    user_id: currentUser.authId,
+    reporter_name: name,
+    reporter_id: studentId,
     classroom,
     title,
     category,
     location,
     datetime,
     description,
-    photos: uploadedReportImages,
+    photos: Array.isArray(uploadedReportImages) ? uploadedReportImages : [],
     status: 'pending',
-    resolutionDate: '',
+    resolution_date: null,
     notes: ''
   };
 
-  db.reports.unshift(newReport);
-  saveDB(db);
+  const { data, error } = await sb.from('reports').insert(payload).select('*').single();
 
-  showToast('ส่งเรื่องร้องเรียนสำเร็จแล้ว', 'success');
+  if (error) {
+    console.error('Report insert failed:', error);
+    showToast('บันทึกเรื่องร้องเรียนไม่สำเร็จ: ' + error.message, 'error');
+    return;
+  }
+
+  db.reports.unshift(mapSupabaseReport(data));
+  inMemoryDB = normalizeDB(db);
+
+  showToast('ส่งเรื่องร้องเรียนและบันทึกลงฐานข้อมูลแล้ว', 'success');
   switchTab('student-track');
 }
 
@@ -771,19 +1004,46 @@ function closeReportDetailModal() {
   document.getElementById('report-detail-modal').classList.add('hidden');
 }
 
-function saveReportFromAdmin() {
+async function saveReportFromAdmin() {
+  if (currentRole !== 'admin') {
+    showToast('ไม่มีสิทธิ์ดำเนินการ', 'error');
+    return;
+  }
+
   const saveBtn = document.getElementById('admin-save-report-btn');
   const id = saveBtn.getAttribute('data-id');
-  db = loadDB();
-  const r = db.reports.find(item => item.id === id);
-  if (!r) return;
+  const status = document.getElementById('admin-action-status').value;
+  const resolutionDate = document.getElementById('admin-action-resdate').value || null;
+  const notes = document.getElementById('admin-action-notes').value.trim();
 
-  r.status = document.getElementById('admin-action-status').value;
-  r.resolutionDate = document.getElementById('admin-action-resdate').value;
-  r.notes = document.getElementById('admin-action-notes').value.trim();
+  if (!isSupabaseReady()) {
+    showToast('ยังไม่ได้ตั้งค่า Supabase', 'error');
+    return;
+  }
 
-  saveDB(db);
-  showToast('บันทึกการแก้ไขเรียบร้อย', 'success');
+  const { data, error } = await sb
+    .from('reports')
+    .update({
+      status,
+      resolution_date: resolutionDate,
+      notes,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', id)
+    .select('*')
+    .single();
+
+  if (error) {
+    console.error('Report update failed:', error);
+    showToast('บันทึกการแก้ไขไม่สำเร็จ: ' + error.message, 'error');
+    return;
+  }
+
+  const index = (db.reports || []).findIndex(item => item.id === id);
+  if (index >= 0) db.reports[index] = mapSupabaseReport(data);
+  inMemoryDB = normalizeDB(db);
+
+  showToast('บันทึกการแก้ไขลงฐานข้อมูลแล้ว', 'success');
   closeReportDetailModal();
   renderAdminReports();
   renderAdminDashboard();
@@ -1146,22 +1406,41 @@ function hideLoadingOverlay() {
   }
 }
 
-function initApp() {
+async function initApp() {
   if (appInitialized) return;
   appInitialized = true;
 
   showLoadingOverlay();
   try {
     db = loadDB();
-    updateUIAuth();
-    switchTab('public-achievements');
+
+    const restored = await restoreSupabaseSession();
+    if (restored) {
+      updateUIAuth();
+      switchTab(currentRole === 'admin' ? 'admin-dashboard' : 'student-news');
+    } else {
+      updateUIAuth();
+      switchTab('public-achievements');
+    }
   } catch (e) {
     console.error('App init failed:', e);
+    updateUIAuth();
+    switchTab('public-achievements');
   } finally {
     window.setTimeout(() => {
       hideLoadingOverlay();
     }, 650);
   }
+}
+
+if (isSupabaseReady()) {
+  sb.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_OUT') {
+      currentUser = null;
+      currentRole = 'guest';
+      updateUIAuth();
+    }
+  });
 }
 
 if (document.readyState === 'loading') {
