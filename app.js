@@ -365,6 +365,7 @@ function setLoginRole(role) {
   const formStudent = document.getElementById('form-login-student');
   const formAdmin = document.getElementById('form-login-admin');
   const formRegister = document.getElementById('form-register-student');
+  const formAdminRegister = document.getElementById('form-register-admin');
 
   if (role === 'student') {
     if (tabStudent) tabStudent.className = 'flex-1 py-3.5 text-xs font-bold border-b-2 border-school-blue text-school-blue dark:text-school-yellow dark:border-school-yellow transition-all';
@@ -372,12 +373,28 @@ function setLoginRole(role) {
     if (formStudent) formStudent.classList.remove('hidden');
     if (formAdmin) formAdmin.classList.add('hidden');
     if (formRegister) formRegister.classList.add('hidden');
+    if (formAdminRegister) formAdminRegister.classList.add('hidden');
   } else {
     if (tabAdmin) tabAdmin.className = 'flex-1 py-3.5 text-xs font-bold border-b-2 border-slate-800 text-slate-900 dark:text-white dark:border-white transition-all';
     if (tabStudent) tabStudent.className = 'flex-1 py-3.5 text-xs font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-all';
     if (formAdmin) formAdmin.classList.remove('hidden');
     if (formStudent) formStudent.classList.add('hidden');
     if (formRegister) formRegister.classList.add('hidden');
+    if (formAdminRegister) formAdminRegister.classList.add('hidden');
+  }
+}
+
+function toggleAdminRegister(show) {
+  const login = document.getElementById('form-login-admin');
+  const register = document.getElementById('form-register-admin');
+  if (show) {
+    login?.classList.add('hidden');
+    register?.classList.remove('hidden');
+    register?.setAttribute('aria-hidden', 'false');
+  } else {
+    register?.classList.add('hidden');
+    login?.classList.remove('hidden');
+    register?.setAttribute('aria-hidden', 'true');
   }
 }
 
@@ -493,6 +510,84 @@ async function submitLogin(role) {
     updateUIAuth();
     showToast('เข้าสู่ระบบผู้ดูแลเรียบร้อย', 'success');
     switchTab('admin-dashboard');
+  }
+}
+
+async function submitAdminRegister() {
+  if (!isSupabaseReady()) {
+    showLoginError('ยังไม่ได้ตั้งค่า Supabase กรุณาตั้งค่า Project URL และ Publishable Key ก่อน');
+    return;
+  }
+
+  const username = document.getElementById('register-admin-user')?.value.trim();
+  const name = document.getElementById('register-admin-name')?.value.trim();
+  const password = document.getElementById('register-admin-pass')?.value || '';
+  const confirm = document.getElementById('register-admin-pass-confirm')?.value || '';
+  const setupCode = document.getElementById('register-admin-code')?.value || '';
+
+  if (!/^[A-Za-z0-9_-]{4,32}$/.test(username)) {
+    showLoginError('Username ต้องเป็นภาษาอังกฤษ ตัวเลข _ หรือ - และยาว 4-32 ตัวอักษร');
+    return;
+  }
+  if (!name || password.length < 8 || password !== confirm || !setupCode) {
+    showLoginError('กรุณากรอกข้อมูลให้ครบ และรหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร');
+    return;
+  }
+
+  const button = document.querySelector('#form-register-admin button[type=submit]');
+  if (button) {
+    button.disabled = true;
+    button.dataset.oldText = button.innerHTML;
+    button.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1.5"></i>กำลังสร้างบัญชี...';
+  }
+
+  try {
+    const { data, error } = await sb.functions.invoke('create-admin', {
+      body: { username, name, password, setup_code: setupCode }
+    });
+    if (error) throw error;
+    if (!data?.ok) throw new Error(data?.error || 'สร้างบัญชีผู้ดูแลไม่สำเร็จ');
+
+    const { data: loginData, error: loginError } = await sb.auth.signInWithPassword({
+      email: schoolAuthEmail(username),
+      password
+    });
+    if (loginError || !loginData.user) throw loginError || new Error('เข้าสู่ระบบผู้ดูแลหลังสมัครไม่สำเร็จ');
+
+    const { data: profile, error: profileError } = await sb
+      .from('profiles')
+      .select('id,student_id,name,role,classroom,email')
+      .eq('id', loginData.user.id)
+      .maybeSingle();
+
+    if (profileError || !profile || profile.role !== 'admin') {
+      await sb.auth.signOut();
+      throw profileError || new Error('ไม่พบข้อมูลผู้ดูแล');
+    }
+
+    currentUser = mapSupabaseProfile(profile);
+    currentRole = 'admin';
+    await refreshRemoteReports();
+    await refreshRemoteUsers();
+    updateUIAuth();
+    document.getElementById('form-register-admin')?.reset();
+    showToast(`สร้างบัญชีผู้ดูแลสำเร็จ ยินดีต้อนรับ ${currentUser.name}`, 'success');
+    switchTab('admin-dashboard');
+  } catch (err) {
+    console.error('Admin registration failed:', err);
+    const msg = String(err?.message || err || '');
+    if (msg.toLowerCase().includes('already') || msg.includes('มีอยู่แล้ว') || msg.includes('duplicate')) {
+      showLoginError('Username นี้มีบัญชีอยู่แล้ว กรุณาใช้ชื่ออื่นหรือเข้าสู่ระบบ');
+    } else if (msg.toLowerCase().includes('invalid setup code') || msg.includes('รหัสเปิดสมัคร')) {
+      showLoginError('รหัสเปิดสมัครผู้ดูแลไม่ถูกต้อง');
+    } else {
+      showLoginError(msg || 'สร้างบัญชีผู้ดูแลไม่สำเร็จ');
+    }
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.innerHTML = button.dataset.oldText || '<i class="fa-solid fa-user-shield mr-1.5"></i>สร้างบัญชีผู้ดูแล';
+    }
   }
 }
 

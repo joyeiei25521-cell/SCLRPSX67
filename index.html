@@ -131,6 +131,10 @@
       <!-- Admin Section -->
       <div id="sidebar-admin-menu" class="pt-2 border-t border-slate-800/80 hidden">
         <span class="px-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">เมนูผู้ดูแลระบบ (Admin)</span>
+<button type="button" onclick="toggleAdminRegister?.()" class="admin-register-btn">
+  สมัครบัญชีผู้ดูแลระบบ
+</button>
+
         <a href="#admin-dashboard" onclick="switchTab('admin-dashboard')" class="sidebar-link flex items-center px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:bg-slate-800 hover:text-white text-slate-300">
           <i class="fa-solid fa-chart-pie w-5 mr-3 text-emerald-400"></i>
           <span>Dashboard สรุปผล</span>
@@ -305,12 +309,16 @@
               </div>
             </form>
 
-            <!-- Admin Form -->
+            <!-- Admin Login Form -->
             <form id="form-login-admin" class="hidden" onsubmit="event.preventDefault(); submitLogin('admin');">
               <div class="space-y-4">
+                <div class="p-3 bg-slate-50 dark:bg-slate-900/40 text-slate-600 dark:text-slate-300 rounded-xl text-[11px] border border-slate-200 dark:border-slate-700 flex items-center space-x-2">
+                  <i class="fa-solid fa-shield-halved"></i>
+                  <span>บัญชีผู้ดูแลแยกจากนักเรียน และต้องใช้ชื่อผู้ใช้กับรหัสผ่าน</span>
+                </div>
                 <div>
                   <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">ชื่อผู้ใช้งาน (Username)</label>
-                  <input type="text" id="login-admin-user" required placeholder="ใส่ชื่อผู้ใช้งาน" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-english">
+                  <input type="text" id="login-admin-user" required placeholder="เช่น admin01" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-english">
                 </div>
                 <div>
                   <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">รหัสผ่าน (Password)</label>
@@ -318,6 +326,45 @@
                 </div>
                 <button type="submit" class="w-full py-3 bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 text-white font-extrabold rounded-xl text-sm transition duration-200 shadow-lg">
                   เข้าสู่ระบบผู้ดูแล
+                </button>
+                <button type="button" onclick="toggleAdminRegister(true)" class="w-full py-2.5 text-sm font-bold text-blue-700 dark:text-yellow-300 hover:bg-blue-50 dark:hover:bg-slate-700/50 rounded-xl border border-blue-100 dark:border-slate-600 transition">
+                  <i class="fa-solid fa-user-shield mr-1.5"></i>สร้างบัญชีผู้ดูแล
+                </button>
+              </div>
+            </form>
+
+            <!-- Admin Register Form -->
+            <form id="form-register-admin" class="hidden" onsubmit="event.preventDefault(); submitAdminRegister();" aria-hidden="true">
+              <div class="space-y-4">
+                <div class="p-3 bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 rounded-xl text-[11px] border border-amber-200 dark:border-amber-900/30 flex items-start space-x-2">
+                  <i class="fa-solid fa-lock mt-0.5"></i>
+                  <span>การสร้าง Admin ต้องใช้ “รหัสเปิดสมัครผู้ดูแล” ที่เจ้าของระบบกำหนดไว้ ป้องกันนักเรียนสมัครเป็น Admin เอง</span>
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">ชื่อผู้ใช้งาน (Username) <span class="text-rose-500">*</span></label>
+                  <input type="text" id="register-admin-user" required maxlength="32" pattern="[A-Za-z0-9_-]{4,32}" placeholder="เช่น admin01" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-english">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">ชื่อผู้ดูแล <span class="text-rose-500">*</span></label>
+                  <input type="text" id="register-admin-name" required maxlength="100" placeholder="เช่น ฝ่ายสภานักเรียน" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">รหัสผ่าน <span class="text-rose-500">*</span></label>
+                  <input type="password" id="register-admin-pass" required minlength="8" placeholder="อย่างน้อย 8 ตัวอักษร" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">ยืนยันรหัสผ่าน <span class="text-rose-500">*</span></label>
+                  <input type="password" id="register-admin-pass-confirm" required minlength="8" placeholder="พิมพ์รหัสผ่านซ้ำอีกครั้ง" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">รหัสเปิดสมัครผู้ดูแล <span class="text-rose-500">*</span></label>
+                  <input type="password" id="register-admin-code" required placeholder="รหัสที่เจ้าของระบบกำหนด" class="w-full py-2.5 px-3.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                </div>
+                <button type="submit" class="w-full py-3 bg-slate-800 dark:bg-slate-700 hover:bg-slate-700 dark:hover:bg-slate-600 text-white font-extrabold rounded-xl text-sm transition duration-200 shadow-lg">
+                  <i class="fa-solid fa-user-shield mr-1.5"></i>สร้างบัญชีผู้ดูแล
+                </button>
+                <button type="button" onclick="toggleAdminRegister(false)" class="w-full py-2 text-xs font-semibold text-slate-500 hover:text-blue-600 dark:hover:text-yellow-400 transition block text-center">
+                  ย้อนกลับไปหน้าเข้าสู่ระบบผู้ดูแล
                 </button>
               </div>
             </form>

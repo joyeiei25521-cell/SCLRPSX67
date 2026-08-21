@@ -60,3 +60,8 @@
 - ต้อง Deploy Edge Function `create-student` และให้ function มี `SUPABASE_SERVICE_ROLE_KEY` ซึ่ง Supabase จัดการให้ใน runtime; ห้ามนำ key นี้มาใส่ frontend
 - ใน frontend ใช้เพียง Project URL + Publishable Key
 - นักเรียนสมัครจากหน้าเว็บ แล้วระบบจะสร้าง profile และเข้าสู่ระบบให้ทันที
+
+
+## Admin self-registration
+
+The admin login has a separate "สร้างบัญชีผู้ดูแล" form. It requires the Edge Function `create-admin` and a Supabase Function secret named `ADMIN_SETUP_CODE`. Do not put the setup code in browser code. Deploy `create-admin`, turn off Verify JWT for this public registration function, and set `ADMIN_SETUP_CODE` in Edge Function Secrets.
