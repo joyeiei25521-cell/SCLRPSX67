@@ -114,7 +114,7 @@ async function signOutSupabase() {
 
 function getDefaultDB() {
   const fallback = window.DEFAULT_DATA || {
-    adminAuth: { username: 'admin', password: '123456' },
+    adminAuth: { username: 'ADMINSCLRP', password: 'ADMINSCLRP3345' },
     users: [
       { id: '12345', name: 'นักเรียนตัวอย่าง', password: '123', role: 'student', class: 'ม.6/1' }
     ],
@@ -129,7 +129,7 @@ function getDefaultDB() {
 
   return {
     ...fallback,
-    adminAuth: { username: 'admin', password: '123456', ...(fallback.adminAuth || {}) },
+    adminAuth: { username: 'ADMINSCLRP', password: 'ADMINSCLRP3345', ...(fallback.adminAuth || {}) },
     users: Array.isArray(fallback.users) ? fallback.users : [],
     reports: Array.isArray(fallback.reports) ? fallback.reports : [],
     achievements: Array.isArray(fallback.achievements) ? fallback.achievements : [],

@@ -1,16 +1,43 @@
-ADMIN SETUP
-============
+ADMIN SETUP - ADMINSCLRP
+==========================
 
-Admin registration is disabled on the public website.
+บัญชีผู้ดูแลที่ต้องการใช้กับเว็บไซต์:
+- Username: ADMINSCLRP
+- Password: ADMINSCLRP3345
+- Internal Supabase Auth email: account-adminsclrp@school-auth.invalid
 
-The site owner creates an Auth user in Supabase, then creates/updates the
-matching row in public.profiles:
+สำคัญ: รหัสผ่านของ Supabase Auth ไม่ควรฝังไว้ใน JavaScript ฝั่งหน้าเว็บ
+ดังนั้นเว็บไซต์จะไม่ใช้รหัสผ่านที่เขียนในไฟล์เป็นบัญชีจริงเมื่อ Supabase ถูกตั้งค่าแล้ว
+ต้องสร้าง Auth user 1 ครั้งใน Supabase ก่อน จากนั้นจึงใช้ Username/Password ด้านบนเข้าสู่ระบบ
 
-- id = Auth user's UUID
-- name = Admin name
-- classroom = Admin classroom/unit
-- role = admin
+วิธีตั้งค่าบัญชีจริง (ทำครั้งเดียว):
+1. ไปที่ Supabase > Authentication > Users > Add user
+2. Email: account-adminsclrp@school-auth.invalid
+3. Password: ADMINSCLRP3345
+4. เปิด Auto Confirm / Confirm user ถ้ามีตัวเลือก
+5. สร้าง User แล้วคัดลอก UUID ของ User
+6. ไปที่ SQL Editor แล้วรัน SQL นี้ โดยแทน YOUR_ADMIN_UUID ด้วย UUID ที่คัดลอกมา:
 
-Passwords are managed by Supabase Auth and are NOT stored in profiles.
+insert into public.profiles (id, student_id, name, role, classroom, email)
+values (
+  'YOUR_ADMIN_UUID',
+  'ADMINSCLRP',
+  'ผู้ดูแลระบบ',
+  'admin',
+  'สภานักเรียน',
+  'account-adminsclrp@school-auth.invalid'
+)
+on conflict (id) do update set
+  student_id = excluded.student_id,
+  name = excluded.name,
+  role = 'admin',
+  classroom = excluded.classroom,
+  email = excluded.email;
 
-Students continue to self-register through the student registration flow.
+7. ตั้งค่า Project URL + Publishable Key ใน supabase-config.js
+8. เปิดหน้าเว็บ > เข้าสู่ระบบ > ผู้ดูแล แล้วใช้:
+   Username: ADMINSCLRP
+   Password: ADMINSCLRP3345
+
+ระบบตรวจสอบ role จาก public.profiles จริง จึงไม่สามารถทำให้บัญชีแอดมินปลอมบนหน้าเว็บแล้วมีสิทธิ์ฐานข้อมูลได้
+โดยไม่สร้าง Auth user และ profile ใน Supabase ก่อน

@@ -19,8 +19,11 @@
 2. เปิด SQL Editor
 3. รัน `supabase_schema.sql` ทั้งไฟล์
 4. Authentication > Providers > Email เปิดใช้งาน และปิด Confirm email สำหรับระบบรหัสนักเรียน alias `.local`
-5. สร้าง Admin ใน Authentication > Users ตามวิธีที่ตั้งไว้สำหรับแอดมิน
-6. คัดลอก UUID ของ Admin แล้วรัน INSERT ที่ท้าย `supabase_schema.sql`
+5. สร้าง Admin ใน Authentication > Users ด้วยบัญชีใน `ADMIN_SETUP.txt`:
+   - Username: ADMINSCLRP
+   - Internal email: account-adminsclrp@school-auth.invalid
+   - Password: ADMINSCLRP3345
+6. คัดลอก UUID ของ Admin แล้วสร้าง/อัปเดตแถวใน `public.profiles` ตาม SQL ใน `ADMIN_SETUP.txt`
 7. เปิด `supabase-config.js` แล้วใส่ Project URL + Publishable Key
 
 > ห้ามใส่ service_role / secret key ใน frontend
