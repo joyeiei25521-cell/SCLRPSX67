@@ -513,3 +513,49 @@ img:hover {
 }
 
 
+
+/* ==========================================================================
+   Public Home — Executive Dashboard UX Refresh
+   ========================================================================== */
+.public-welcome-grid{display:grid;grid-template-columns:minmax(0,2fr) repeat(2,minmax(180px,1fr));gap:1rem}
+.public-welcome-card,.public-mini-card,.public-section-shell{border:1px solid rgba(148,163,184,.16);background:rgba(255,255,255,.78);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 18px 45px -28px rgba(15,23,42,.35)}
+.dark .public-welcome-card,.dark .public-mini-card,.dark .public-section-shell{background:rgba(15,23,42,.72);border-color:rgba(148,163,184,.14)}
+.public-welcome-card{border-radius:1.75rem;padding:1.35rem 1.5rem;display:flex;gap:1rem;align-items:flex-start;position:relative;overflow:hidden}
+.public-welcome-card:after{content:'';position:absolute;width:170px;height:170px;border-radius:50%;right:-70px;top:-80px;background:rgba(250,204,21,.12);filter:blur(5px)}
+.public-welcome-main h3{font-size:1.2rem;font-weight:800;letter-spacing:-.02em;margin:.2rem 0;color:#0f172a}
+.dark .public-welcome-main h3{color:#fff}
+.public-welcome-main p{font-size:.76rem;line-height:1.75;color:#64748b;max-width:720px}
+.dark .public-welcome-main p{color:#94a3b8}
+.public-welcome-icon{width:48px;height:48px;min-width:48px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(135deg,#2563eb,#1e3a8a);color:#fde047;box-shadow:0 12px 25px -10px rgba(37,99,235,.7)}
+.public-eyebrow{font-family:var(--font-en);font-size:.62rem;font-weight:800;letter-spacing:.14em;color:#2563eb}
+.dark .public-eyebrow{color:#fde047}
+.public-mini-card{border-radius:1.75rem;padding:1.25rem;display:flex;flex-direction:column;justify-content:center;min-height:112px;transition:transform .25s ease,box-shadow .25s ease}
+.public-mini-card:hover{transform:translateY(-4px);box-shadow:0 22px 45px -25px rgba(37,99,235,.45)}
+.public-mini-card span{font-size:.68rem;font-weight:700;color:#64748b}.public-mini-card span i{margin-right:.35rem;color:#eab308}
+.public-mini-card strong{font-size:.95rem;font-weight:800;margin-top:.35rem;color:#0f172a}.dark .public-mini-card strong{color:#f8fafc}
+.public-mini-card small{font-size:.66rem;color:#94a3b8;margin-top:.2rem}
+.public-section-shell{border-radius:1.75rem;padding:1.35rem}
+.public-section-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;margin-bottom:1rem}
+.public-section-heading h3{font-size:1.15rem;font-weight:800;color:#0f172a;margin-top:.15rem}.dark .public-section-heading h3{color:#fff}
+.public-section-heading p{font-size:.72rem;color:#94a3b8;margin-top:.2rem}
+.public-live-badge{font-family:var(--font-en);font-size:.6rem;font-weight:800;letter-spacing:.08em;padding:.45rem .65rem;border-radius:999px;background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;white-space:nowrap}.dark .public-live-badge{background:rgba(6,78,59,.3);color:#6ee7b7;border-color:rgba(110,231,183,.2)}
+.public-live-badge span{display:inline-block;width:6px;height:6px;border-radius:50%;background:#10b981;margin-right:.35rem;box-shadow:0 0 0 4px rgba(16,185,129,.12);animation:livePulse 1.8s infinite}
+@keyframes livePulse{50%{opacity:.35;transform:scale(.7)}}
+.public-report-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.8rem}
+.public-report-card{border:1px solid rgba(148,163,184,.14);border-radius:1.2rem;padding:1rem;background:rgba(248,250,252,.8);transition:all .25s ease;animation:reportIn .45s both;animation-delay:var(--delay)}
+.dark .public-report-card{background:rgba(30,41,59,.5);border-color:rgba(148,163,184,.12)}
+.public-report-card:hover{transform:translateY(-4px);border-color:rgba(37,99,235,.3);box-shadow:0 15px 35px -24px rgba(37,99,235,.7)}
+@keyframes reportIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.public-report-top{display:flex;justify-content:space-between;gap:.5rem;align-items:center;margin-bottom:.7rem}
+.public-status{display:inline-flex;align-items:center;gap:.3rem;font-size:.61rem;font-weight:800;padding:.34rem .55rem;border-radius:999px}.public-status.done{background:#ecfdf5;color:#047857}.public-status.working{background:#fffbeb;color:#b45309}.public-status.pending{background:#eff6ff;color:#1d4ed8}.public-status.failed{background:#fff1f2;color:#be123c}.dark .public-status.done{background:rgba(6,78,59,.35);color:#6ee7b7}.dark .public-status.working{background:rgba(120,53,15,.3);color:#fcd34d}.dark .public-status.pending{background:rgba(30,58,138,.35);color:#93c5fd}.dark .public-status.failed{background:rgba(136,19,55,.3);color:#fda4af}
+.public-report-date{font-family:var(--font-en);font-size:.58rem;color:#94a3b8}
+.public-report-card h4{font-size:.85rem;line-height:1.5;font-weight:800;color:#0f172a;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.dark .public-report-card h4{color:#f8fafc}
+.public-report-meta{display:flex;gap:.65rem;flex-wrap:wrap;margin-top:.7rem;color:#94a3b8;font-size:.61rem}.public-report-meta span{display:inline-flex;align-items:center;gap:.28rem}.public-report-meta i{color:#64748b}
+.public-empty-state{grid-column:1/-1;padding:2.2rem 1rem;text-align:center;display:flex;flex-direction:column;gap:.35rem;color:#94a3b8}.public-empty-state i{font-size:1.8rem;margin-bottom:.25rem}.public-empty-state strong{font-size:.8rem;color:#64748b}.dark .public-empty-state strong{color:#cbd5e1}.public-empty-state span{font-size:.68rem}
+
+/* Refined dashboard spacing + accessibility */
+#view-public-achievements{max-width:1500px;margin-inline:auto}
+#view-public-achievements .shadow-premium{box-shadow:0 16px 40px -28px rgba(15,23,42,.45)}
+#view-public-achievements .shadow-premium:hover{box-shadow:0 24px 50px -24px rgba(37,99,235,.32)}
+@media (max-width: 1024px){.public-welcome-grid{grid-template-columns:1fr 1fr}.public-welcome-main{grid-column:1/-1}.public-report-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width: 640px){.public-welcome-grid{grid-template-columns:1fr}.public-welcome-main{grid-column:auto}.public-welcome-card{padding:1.1rem}.public-mini-card{min-height:92px}.public-section-shell{padding:1rem}.public-section-heading{align-items:flex-start;flex-direction:column}.public-report-grid{grid-template-columns:1fr}.public-report-card{padding:.9rem}}

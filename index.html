@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <!-- Custom Styles -->
-  <link rel="stylesheet" href="styles.css?v=20260804-1">
+  <link rel="stylesheet" href="styles.css?v=20260829-LOGIN-LOCKED-1">
 
   <script>
     tailwind.config = {
@@ -344,6 +344,28 @@
           <div class="absolute right-0 top-0 -translate-y-12 translate-x-4 w-48 h-48 rounded-full bg-yellow-400/10 blur-xl pointer-events-none"></div>
         </div>
         
+        <!-- Quick Overview -->
+        <div class="public-welcome-grid">
+          <div class="public-welcome-card public-welcome-main">
+            <div class="public-welcome-icon"><i class="fa-solid fa-bullseye"></i></div>
+            <div>
+              <span class="public-eyebrow">TRANSPARENCY • ACTION • IMPACT</span>
+              <h3>ทุกปัญหามีความหมาย ทุกการแก้ไขมีหลักฐาน</h3>
+              <p>หน้านี้รวบรวมภาพรวมการรับเรื่อง การดำเนินงาน และผลงานของสภานักเรียน ให้ทุกคนติดตามได้ง่ายในหน้าเดียว</p>
+            </div>
+          </div>
+          <div class="public-mini-card">
+            <span><i class="fa-solid fa-bolt"></i> สถานะระบบ</span>
+            <strong>อัปเดตข้อมูลอัตโนมัติ</strong>
+            <small>ข้อมูลล่าสุดจากระบบกลาง</small>
+          </div>
+          <div class="public-mini-card">
+            <span><i class="fa-solid fa-users"></i> เพื่อใคร</span>
+            <strong>นักเรียนทุกคน</strong>
+            <small>ร่วมแจ้งปัญหาและติดตามผลได้</small>
+          </div>
+        </div>
+
         <!-- Problem Resolution Statistics Grid -->
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           <!-- Total -->
@@ -425,6 +447,19 @@
               <canvas id="pubCategoryChart"></canvas>
             </div>
           </div>
+        </div>
+
+        <!-- Recent resolved problems -->
+        <div class="public-section-shell">
+          <div class="public-section-heading">
+            <div>
+              <span class="public-eyebrow">LATEST ACTIONS</span>
+              <h3>การแก้ไขปัญหาล่าสุด</h3>
+              <p>เรื่องที่ดำเนินการแล้วหรือกำลังอยู่ระหว่างการจัดการ</p>
+            </div>
+            <div class="public-live-badge"><span></span> LIVE DATA</div>
+          </div>
+          <div id="pub-recent-reports" class="public-report-grid"></div>
         </div>
 
         <!-- Success stories list (ข่าวสารจากสภานักเรียน) -->

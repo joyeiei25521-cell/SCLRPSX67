@@ -792,6 +792,30 @@ function renderPublicAchievements() {
     }
   }
 
+  // Recent public-facing report summary (never expose reporter identity)
+  const recent = document.getElementById('pub-recent-reports');
+  if (recent) {
+    const statusMeta = {
+      completed: { label: 'เสร็จสิ้น', cls: 'done', icon: 'fa-circle-check' },
+      processing: { label: 'กำลังดำเนินการ', cls: 'working', icon: 'fa-spinner' },
+      pending: { label: 'รอดำเนินการ', cls: 'pending', icon: 'fa-clock' },
+      failed: { label: 'ไม่สามารถดำเนินการ', cls: 'failed', icon: 'fa-circle-xmark' }
+    };
+    const latest = [...reports].sort((a,b) => String(b?.datetime||'').localeCompare(String(a?.datetime||''))).slice(0,6);
+    recent.innerHTML = latest.length ? latest.map((r, i) => {
+      const meta = statusMeta[r?.status] || statusMeta.pending;
+      const title = scEscape(r?.title || 'เรื่องที่แจ้งเข้ามา');
+      const category = scEscape(r?.category || 'อื่น ๆ');
+      const location = scEscape(r?.location || 'ไม่ระบุสถานที่');
+      const date = scEscape(safeDate(r?.resolutionDate || r?.datetime || '').split(' ')[0] || 'ไม่ระบุ');
+      return `<article class="public-report-card" style="--delay:${i * 70}ms">
+        <div class="public-report-top"><span class="public-status ${meta.cls}"><i class="fa-solid ${meta.icon}"></i>${meta.label}</span><span class="public-report-date">${date}</span></div>
+        <h4>${title}</h4>
+        <div class="public-report-meta"><span><i class="fa-solid fa-tag"></i>${category}</span><span><i class="fa-solid fa-location-dot"></i>${location}</span></div>
+      </article>`;
+    }).join('') : `<div class="public-empty-state"><i class="fa-regular fa-folder-open"></i><strong>ยังไม่มีรายการปัญหา</strong><span>เมื่อมีการแจ้งปัญหา รายการจะปรากฏที่นี่</span></div>`;
+  }
+
   const grid = document.getElementById('pub-achievements-grid');
   if (grid) {
     const achievements = Array.isArray(db.achievements) ? db.achievements : [];
@@ -1673,12 +1697,17 @@ async function initApp(){
   if(appInitialized) return; appInitialized=true; showLoadingOverlay();
   try{
     db=getRemoteDBShell();
+    // Always start at the login screen. Any previous Supabase session is
+    // intentionally cleared so this deployment never bypasses the login page.
     const restored=await restoreSupabaseSession();
+    if (restored) {
+      await signOutSupabase();
+    }
     await refreshAllRemoteData();
     updateUIAuth();
-    if(restored) switchTab(currentRole==='admin'?'admin-dashboard':'student-news'); else switchTab('public-achievements');
+    switchTab('login');
     await setupSupabaseRealtime();
-  }catch(e){console.error('App init failed:',e);updateUIAuth();switchTab('public-achievements');showToast('เริ่มระบบไม่สำเร็จ: '+(e.message||e),'error');}
+  }catch(e){console.error('App init failed:',e);updateUIAuth();switchTab('login');showToast('เริ่มระบบไม่สำเร็จ: '+(e.message||e),'error');}
   finally{window.setTimeout(hideLoadingOverlay,400);}
 }
 
