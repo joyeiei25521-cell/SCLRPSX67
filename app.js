@@ -352,7 +352,7 @@ function handleAuthAction() {
     signOutSupabase().finally(() => {
       updateUIAuth();
       showToast('ออกจากระบบเรียบร้อยแล้ว', 'info');
-      switchTab('public-achievements');
+      switchTab('login');
     });
   } else {
     switchTab('login');
@@ -696,9 +696,9 @@ function updateUIAuth() {
       authBtn.className = 'w-full py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-sm transition-all duration-150 flex items-center justify-center space-x-2 shadow-lg shadow-rose-600/20';
     }
 
-    if (headerUserName) headerUserName.innerText = safeUserName;
+    if (headerUserName) headerUserName.innerText = '';
     if (headerUserClass) headerUserClass.innerText = 'สภานักเรียน';
-    if (sidebarUserName) sidebarUserName.innerText = safeUserName;
+    if (sidebarUserName) sidebarUserName.innerText = '';
     if (sidebarUserRole) sidebarUserRole.innerText = 'ผู้ดูแลระบบ';
   } else {
     if (studentMenu) studentMenu.classList.add('hidden');
@@ -1742,14 +1742,23 @@ function removeChatAttachment(role, index) {
 }
 
 
-// Restore the Supabase session automatically when the page is reopened.
-// The user stays logged in until they explicitly press Logout or clear site data.
-sb.auth.onAuthStateChange(async (event, session) => {
-  if (session?.user) {
-    try {
-      await loadCurrentUser?.();
-    } catch (e) {
-      console.warn('Session restored, but profile refresh failed:', e);
+// Login-first mode: do not silently restore a previous Supabase session.
+// initApp() explicitly clears any existing session before showing the login screen.
+if (isSupabaseReady()) {
+  sb.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_OUT') {
+      currentUser = null;
+      currentRole = 'guest';
+      updateUIAuth();
+      if (document.readyState !== 'loading') switchTab('login');
     }
-  }
-});
+  });
+}
+
+// The original project did not invoke initApp(), which left every view hidden.
+// Start the app deterministically after the DOM is ready.
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp, { once: true });
+} else {
+  initApp();
+}
