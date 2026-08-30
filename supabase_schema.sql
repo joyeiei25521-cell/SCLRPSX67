@@ -455,7 +455,7 @@ to authenticated
 using (
   bucket_id = 'school-images'
   and (
-    owner_id = auth.uid()
+    owner_id = auth.uid()::text
     or public.is_admin()
   )
 );

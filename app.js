@@ -917,7 +917,6 @@ let reportImageFiles = [];
 
 function initStudentReportForm() {
   reportImageFiles = [];
- {
   if (currentUser) {
     safeValue('report-form-name', currentUser.name || '');
     safeValue('report-form-id', currentUser.id || '');
