@@ -913,8 +913,11 @@ function renderStudentLinks() {
 
 // 4. STUDENT REPORT CONTROLLER
 let uploadedReportImages = [];
+let reportImageFiles = [];
 
 function initStudentReportForm() {
+  reportImageFiles = [];
+ {
   if (currentUser) {
     safeValue('report-form-name', currentUser.name || '');
     safeValue('report-form-id', currentUser.id || '');
@@ -936,11 +939,110 @@ function renderReportImagePreviews() {
   container.innerHTML = uploadedReportImages.map((img, idx) => `
     <div class="relative h-20 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 group">
       <img src="${img}" class="w-full h-full object-cover">
-      <button type="button" onclick="uploadedReportImages.splice(${idx}, 1); renderReportImagePreviews();" class="absolute top-1 right-1 w-6 h-6 rounded-full bg-rose-600 text-white text-xs flex items-center justify-center opacity-90 hover:opacity-100">
+      <button type="button" onclick="removeReportImage(${idx});" class="absolute top-1 right-1 w-6 h-6 rounded-full bg-rose-600 text-white text-xs flex items-center justify-center opacity-90 hover:opacity-100">
         <i class="fa-solid fa-xmark"></i>
       </button>
     </div>
   `).join('');
+}
+
+
+async function prepareReportImage(file, reportId) {
+  if (!file || !file.type.startsWith('image/')) throw new Error('รองรับเฉพาะไฟล์รูปภาพ');
+  const maxSize = 8 * 1024 * 1024;
+  if (file.size > maxSize) throw new Error(`${file.name} ใหญ่เกิน 8MB`);
+
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const safeExt = ['jpg','jpeg','png','webp'].includes(ext) ? ext : 'jpg';
+  const path = `reports/${currentUser.authId}/${reportId}/${crypto.randomUUID()}.${safeExt}`;
+
+  const { error } = await sb.storage.from('school-images').upload(path, file, {
+    cacheControl: '3600',
+    upsert: false,
+    contentType: file.type
+  });
+  if (error) throw error;
+
+  const { data } = sb.storage.from('school-images').getPublicUrl(path);
+  return data.publicUrl;
+}
+
+async function uploadSelectedReportImages(reportId) {
+  if (!reportImageFiles.length) return [];
+  const urls = [];
+  for (const file of reportImageFiles) {
+    const url = await prepareReportImage(file, reportId);
+    urls.push(url);
+  }
+  return urls;
+}
+
+function handleReportImagesChange(files) {
+  const selected = Array.from(files || []);
+  if (!selected.length) return;
+
+  if (reportImageFiles.length + selected.length > 5) {
+    showToast('อัปโหลดรูปได้สูงสุด 5 รูปต่อเรื่อง', 'error');
+    return;
+  }
+
+  selected.forEach(file => {
+    if (!file.type.startsWith('image/')) {
+      showToast(`${file.name} ไม่ใช่ไฟล์รูปภาพ`, 'error');
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      showToast(`${file.name} ใหญ่เกิน 8MB`, 'error');
+      return;
+    }
+
+    reportImageFiles.push(file);
+    const reader = new FileReader();
+    reader.onload = () => {
+      uploadedReportImages.push(reader.result);
+      renderReportImagePreviews();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function removeReportImage(index) {
+  reportImageFiles.splice(index, 1);
+  uploadedReportImages.splice(index, 1);
+  renderReportImagePreviews();
+}
+
+function initReportImageUploader() {
+  const input = document.getElementById('report-images-input');
+  const area = document.getElementById('image-drag-area');
+  if (!input || !area || area.dataset.bound === '1') return;
+  area.dataset.bound = '1';
+
+  area.addEventListener('click', () => input.click());
+  input.addEventListener('change', e => {
+    handleReportImagesChange(e.target.files);
+    input.value = '';
+  });
+
+  ['dragenter', 'dragover'].forEach(eventName => {
+    area.addEventListener(eventName, e => {
+      e.preventDefault();
+      e.stopPropagation();
+      area.classList.add('ring-2', 'ring-blue-500');
+    });
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+    area.addEventListener(eventName, e => {
+      e.preventDefault();
+      e.stopPropagation();
+      area.classList.remove('ring-2', 'ring-blue-500');
+    });
+  });
+
+  area.addEventListener('drop', e => {
+    handleReportImagesChange(e.dataTransfer?.files);
+  });
 }
 
 async function submitProblemReport() {
@@ -982,11 +1084,23 @@ async function submitProblemReport() {
     location,
     datetime,
     description,
-    photos: Array.isArray(uploadedReportImages) ? uploadedReportImages : [],
+    photos: [],
+
     status: 'pending',
     resolution_date: null,
     notes: ''
   };
+
+  showLoadingOverlay();
+  try {
+    payload.photos = await uploadSelectedReportImages(reportId);
+  } catch (uploadError) {
+    console.error('Report image upload failed:', uploadError);
+    showToast('อัปโหลดรูปไม่สำเร็จ: ' + (uploadError.message || uploadError), 'error');
+    return;
+  } finally {
+    hideLoadingOverlay();
+  }
 
   const { data, error } = await sb.from('reports').insert(payload).select('*').single();
 
@@ -999,6 +1113,8 @@ async function submitProblemReport() {
   db.reports.unshift(mapSupabaseReport(data));
   inMemoryDB = normalizeDB(db);
 
+  uploadedReportImages = [];
+  reportImageFiles = [];
   showToast('ส่งเรื่องร้องเรียนและบันทึกลงฐานข้อมูลแล้ว', 'success');
   switchTab('student-track');
 }
@@ -1758,7 +1874,8 @@ if (isSupabaseReady()) {
 // The original project did not invoke initApp(), which left every view hidden.
 // Start the app deterministically after the DOM is ready.
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initApp, { once: true });
+  document.addEventListener('DOMContentLoaded', () => { initReportImageUploader(); initApp(); }, { once: true });
 } else {
+  initReportImageUploader();
   initApp();
 }

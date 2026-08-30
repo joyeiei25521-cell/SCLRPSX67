@@ -73,3 +73,11 @@ The admin login has a separate "สร้างบัญชีผู้ดูแ
 - The application always opens on the Login screen.
 - A previously stored Supabase session is cleared on startup, so the login screen cannot be bypassed after reopening the site.
 - Admin authentication remains Supabase Auth + `profiles.role = 'admin'`; credentials are not treated as a client-side security check.
+
+
+## อัปโหลดรูปแจ้งปัญหา
+ระบบอัปโหลดรูปแจ้งปัญหาไปที่ Supabase Storage bucket `school-images` โดยตรง แทนการเก็บ Base64 ลงฐานข้อมูล
+- เลือก/ลากรูปได้สูงสุด 5 รูปต่อเรื่อง
+- รองรับ JPG, PNG, WEBP
+- จำกัด 8MB ต่อรูป
+- ต้องรัน `supabase_schema.sql` เวอร์ชันนี้เพื่อสร้าง bucket และ Storage policies
