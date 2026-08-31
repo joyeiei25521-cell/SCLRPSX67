@@ -12,6 +12,26 @@ function isSupabaseReady() {
   return !!(sb && typeof sb.auth?.signInWithPassword === 'function');
 }
 
+// Remember the signed-in account locally. Supabase still stores the real session/token securely.
+const AUTH_HINT_KEY = 'sc_student_council_auth_hint_v2';
+function saveAuthHint(user, role) {
+  try {
+    if (!user) return;
+    localStorage.setItem(AUTH_HINT_KEY, JSON.stringify({
+      authId: user.authId || user.id || '',
+      role: role || user.role || 'student',
+      name: user.name || '',
+      studentId: user.id || user.studentId || '',
+      classroom: user.class || user.classroom || '',
+      email: user.email || ''
+    }));
+  } catch (e) { console.warn('Could not save auth hint:', e); }
+}
+function getAuthHint() {
+  try { return JSON.parse(localStorage.getItem(AUTH_HINT_KEY) || 'null'); } catch (e) { return null; }
+}
+function clearAuthHint() { try { localStorage.removeItem(AUTH_HINT_KEY); } catch (e) {} }
+
 function mapSupabaseProfile(row) {
   if (!row) return null;
   return {
@@ -103,6 +123,7 @@ async function restoreSupabaseSession() {
 }
 
 async function signOutSupabase() {
+  clearAuthHint();
   if (isSupabaseReady()) {
     const { error } = await sb.auth.signOut();
     if (error) console.error('Supabase sign out failed:', error);
@@ -467,6 +488,7 @@ async function submitLogin(role) {
 
     currentUser = mapSupabaseProfile(profile);
     currentRole = 'student';
+    saveAuthHint(currentUser, currentRole);
     await refreshRemoteReports();
     updateUIAuth();
     showToast(`ยินดีต้อนรับ ${currentUser.name}`, 'success');
@@ -505,6 +527,7 @@ async function submitLogin(role) {
 
     currentUser = mapSupabaseProfile(profile);
     currentRole = 'admin';
+    saveAuthHint(currentUser, currentRole);
     await refreshRemoteReports();
     await refreshRemoteUsers();
     updateUIAuth();
@@ -567,6 +590,7 @@ async function submitAdminRegister() {
 
     currentUser = mapSupabaseProfile(profile);
     currentRole = 'admin';
+    saveAuthHint(currentUser, currentRole);
     await refreshRemoteReports();
     await refreshRemoteUsers();
     updateUIAuth();
@@ -640,6 +664,7 @@ async function submitRegister() {
 
     currentUser = mapSupabaseProfile(profile);
     currentRole = 'student';
+    saveAuthHint(currentUser, currentRole);
     await refreshRemoteReports();
     updateUIAuth();
     document.getElementById('form-register-student')?.reset();
@@ -1532,18 +1557,71 @@ async function restoreSupabaseSession() {
   if (!isSupabaseReady()) return false;
   try {
     const { data: { session } } = await sb.auth.getSession();
-    if (!session?.user) return false;
-    const { data: profile, error } = await sb.from('profiles')
-      .select('id,student_id,name,role,classroom,email').eq('id', session.user.id).maybeSingle();
-    if (error || !profile) {
-      await sb.auth.signOut();
+    if (!session?.user) {
+      clearAuthHint();
       return false;
     }
-    currentUser = mapSupabaseProfile(profile);
-    currentRole = profile.role === 'admin' ? 'admin' : 'student';
+
+    const hint = getAuthHint();
+    let profile = null;
+    const { data, error } = await sb.from('profiles')
+      .select('id,student_id,name,role,classroom,email')
+      .eq('id', session.user.id)
+      .maybeSingle();
+
+    if (!error && data) profile = data;
+
+    // If the profile request is temporarily blocked by RLS/network, do NOT sign the
+    // user out. Reuse the remembered role/details while the valid Supabase session lives.
+    if (profile) {
+      currentUser = mapSupabaseProfile(profile);
+      currentRole = currentUser.role === 'admin' ? 'admin' : 'student';
+      saveAuthHint(currentUser, currentRole);
+      return true;
+    }
+
+    if (hint && hint.authId === session.user.id) {
+      currentUser = {
+        id: hint.studentId || session.user.user_metadata?.student_id || '',
+        authId: session.user.id,
+        name: hint.name || session.user.user_metadata?.name || '',
+        role: hint.role === 'admin' ? 'admin' : 'student',
+        class: hint.classroom || session.user.user_metadata?.classroom || '',
+        email: hint.email || session.user.email || ''
+      };
+      currentRole = currentUser.role;
+      return true;
+    }
+
+    // Last-resort recovery from Supabase Auth metadata. Never force a logout here.
+    const meta = session.user.user_metadata || {};
+    currentUser = {
+      id: meta.student_id || meta.username || session.user.email?.split('@')[0] || '',
+      authId: session.user.id,
+      name: meta.name || '',
+      role: meta.role === 'admin' ? 'admin' : 'student',
+      class: meta.classroom || '',
+      email: session.user.email || ''
+    };
+    currentRole = currentUser.role;
+    saveAuthHint(currentUser, currentRole);
     return true;
   } catch (error) {
     console.error('Supabase session restore failed:', error);
+    // A transient startup error must not destroy the existing login session.
+    const { data } = await sb.auth.getSession().catch(() => ({ data: { session: null } }));
+    if (data?.session?.user) {
+      const hint = getAuthHint();
+      if (hint?.authId === data.session.user.id) {
+        currentUser = {
+          id: hint.studentId || '', authId: data.session.user.id,
+          name: hint.name || '', role: hint.role === 'admin' ? 'admin' : 'student',
+          class: hint.classroom || '', email: hint.email || data.session.user.email || ''
+        };
+        currentRole = currentUser.role;
+        return true;
+      }
+    }
     return false;
   }
 }
@@ -1862,15 +1940,18 @@ function removeChatAttachment(role, index) {
 }
 
 
-// Login-first mode: do not silently restore a previous Supabase session.
-// initApp() explicitly clears any existing session before showing the login screen.
+// Keep the authenticated state alive across reloads. Only an explicit SIGNED_OUT
+// event clears the UI/session hint; token refreshes and page reloads do not.
 if (isSupabaseReady()) {
-  sb.auth.onAuthStateChange((event) => {
+  sb.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT') {
+      clearAuthHint();
       currentUser = null;
       currentRole = 'guest';
       updateUIAuth();
       if (document.readyState !== 'loading') switchTab('login');
+    } else if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user && currentUser) {
+      saveAuthHint(currentUser, currentRole);
     }
   });
 }
