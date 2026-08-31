@@ -44,6 +44,25 @@ function mapSupabaseProfile(row) {
   };
 }
 
+function hydrateCurrentUserFromSession(session, hint = null) {
+  if (!session?.user) return null;
+
+  const meta = session.user.user_metadata || {};
+  const nextUser = {
+    id: hint?.studentId || meta.student_id || meta.username || session.user.email?.split('@')[0] || '',
+    authId: session.user.id,
+    name: hint?.name || meta.name || '',
+    role: hint?.role === 'admin' || meta.role === 'admin' ? 'admin' : 'student',
+    class: hint?.classroom || meta.classroom || '',
+    email: hint?.email || session.user.email || ''
+  };
+
+  currentUser = nextUser;
+  currentRole = nextUser.role;
+  saveAuthHint(currentUser, currentRole);
+  return nextUser;
+}
+
 function mapSupabaseReport(row) {
   return {
     id: row.id,
@@ -99,10 +118,12 @@ async function restoreSupabaseSession() {
     const { data: sessionData, error: sessionError } = await sb.auth.getSession();
     if (sessionError) throw sessionError;
     const session = sessionData?.session;
-    if (!session?.user) return false;
+    if (!session?.user) {
+      clearAuthHint();
+      return false;
+    }
 
-    // Never sign the user out just because a profile/data request temporarily fails.
-    // Supabase Auth is the source of truth for the persistent session.
+    const hint = getAuthHint();
     const { data: profile, error: profileError } = await sb
       .from('profiles')
       .select('id,student_id,name,role,classroom,email')
@@ -111,39 +132,22 @@ async function restoreSupabaseSession() {
 
     if (profileError) {
       console.warn('Profile restore failed; keeping authenticated session:', profileError);
-      const hint = getAuthHint();
       if (hint && hint.authId === session.user.id) {
-        currentUser = {
-          authId: session.user.id,
-          id: hint.studentId || '',
-          name: hint.name || '',
-          role: hint.role === 'admin' ? 'admin' : 'student',
-          class: hint.classroom || '',
-          email: hint.email || session.user.email || ''
-        };
-        currentRole = currentUser.role;
+        hydrateCurrentUserFromSession(session, hint);
         return true;
       }
-      // We still have a valid Auth session. Do not force a logout.
-      return false;
+      hydrateCurrentUserFromSession(session);
+      return true;
     }
 
     if (!profile) {
       console.warn('No profile found for authenticated user; keeping session instead of signing out.');
-      const hint = getAuthHint();
       if (hint && hint.authId === session.user.id) {
-        currentUser = {
-          authId: session.user.id,
-          id: hint.studentId || '',
-          name: hint.name || '',
-          role: hint.role === 'admin' ? 'admin' : 'student',
-          class: hint.classroom || '',
-          email: hint.email || session.user.email || ''
-        };
-        currentRole = currentUser.role;
+        hydrateCurrentUserFromSession(session, hint);
         return true;
       }
-      return false;
+      hydrateCurrentUserFromSession(session);
+      return true;
     }
 
     currentUser = mapSupabaseProfile(profile);
@@ -154,6 +158,12 @@ async function restoreSupabaseSession() {
     return true;
   } catch (error) {
     console.error('Supabase session restore failed:', error);
+    const fallbackHint = getAuthHint();
+    const { data } = await sb.auth.getSession().catch(() => ({ data: { session: null } }));
+    if (data?.session?.user) {
+      hydrateCurrentUserFromSession(data.session, fallbackHint);
+      return true;
+    }
     return false;
   }
 }
@@ -1119,26 +1129,40 @@ async function submitProblemReport() {
     return;
   }
   const authUserId = sessionData.session.user.id;
+  const hint = getAuthHint();
 
-  // Always use the Auth UUID returned by Supabase, never a cached/local value.
-  if (currentRole !== 'student' || !currentUser) {
+  // Always use the Auth UUID returned by Supabase, never a stale cached/local value.
+  if (currentRole !== 'student' || !currentUser || currentUser.authId !== authUserId) {
     const { data: profile, error: profileError } = await sb
       .from('profiles')
       .select('id,student_id,name,role,classroom,email')
       .eq('id', authUserId)
       .maybeSingle();
-    if (profileError || !profile || profile.role !== 'student') {
+
+    if (!profileError && profile && profile.role === 'student') {
+      currentUser = mapSupabaseProfile(profile);
+      currentRole = 'student';
+      saveAuthHint(currentUser, currentRole);
+    } else if (hint && hint.authId === authUserId && hint.role !== 'admin') {
+      currentUser = {
+        id: hint.studentId || '',
+        authId: authUserId,
+        name: hint.name || '',
+        role: 'student',
+        class: hint.classroom || '',
+        email: hint.email || sessionData.session.user.email || ''
+      };
+      currentRole = 'student';
+      saveAuthHint(currentUser, currentRole);
+    } else {
       showToast('ไม่พบสิทธิ์นักเรียนของบัญชีนี้', 'error');
       return;
     }
-    currentUser = mapSupabaseProfile(profile);
-    currentRole = 'student';
-    saveAuthHint(currentUser, currentRole);
   }
 
   const name = document.getElementById('report-form-name').value.trim();
-  const studentId = document.getElementById('report-form-id').value.trim();
-  const classroom = document.getElementById('report-form-class').value.trim();
+  const studentId = (document.getElementById('report-form-id').value.trim() || currentUser.id || '').trim();
+  const classroom = document.getElementById('report-form-class').value.trim() || currentUser.class || '';
   const title = document.getElementById('report-title').value.trim();
   const category = document.getElementById('report-category').value;
   const location = document.getElementById('report-location').value.trim();
@@ -1572,7 +1596,7 @@ async function refreshAllRemoteData() {
     if (currentRole === 'admin') {
       await refreshRemoteUsers();
     }
-    inMemoryDB = db;
+    inMemoryDB = normalizeDB(db);
     return true;
   } catch (error) {
     console.error('Supabase data refresh failed:', error);
@@ -1588,6 +1612,7 @@ async function refreshRemoteReports() {
   const { data, error } = await q;
   if (error) throw error;
   db.reports = (data || []).map(mapSupabaseReport);
+  inMemoryDB = normalizeDB(db);
 }
 
 async function refreshRemoteSongs() {
@@ -1597,6 +1622,7 @@ async function refreshRemoteSongs() {
   const { data, error } = await q;
   if (error) throw error;
   db.songs = (data || []).map(mapSong);
+  inMemoryDB = normalizeDB(db);
 }
 
 async function refreshRemoteLostFound() {
@@ -1604,6 +1630,7 @@ async function refreshRemoteLostFound() {
   const { data, error } = await sb.from('lost_found').select('*').order('pinned', { ascending: false }).order('created_at', { ascending: false });
   if (error) throw error;
   db.lostFound = (data || []).map(mapLostFound);
+  inMemoryDB = normalizeDB(db);
 }
 
 async function refreshRemoteUsers() {
@@ -1611,79 +1638,7 @@ async function refreshRemoteUsers() {
   const { data, error } = await sb.from('profiles').select('id,student_id,name,role,classroom,email').order('created_at', { ascending: false });
   if (error) throw error;
   db.users = (data || []).map(mapSupabaseProfile);
-}
-
-async function restoreSupabaseSession() {
-  if (!isSupabaseReady()) return false;
-  try {
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session?.user) {
-      clearAuthHint();
-      return false;
-    }
-
-    const hint = getAuthHint();
-    let profile = null;
-    const { data, error } = await sb.from('profiles')
-      .select('id,student_id,name,role,classroom,email')
-      .eq('id', session.user.id)
-      .maybeSingle();
-
-    if (!error && data) profile = data;
-
-    // If the profile request is temporarily blocked by RLS/network, do NOT sign the
-    // user out. Reuse the remembered role/details while the valid Supabase session lives.
-    if (profile) {
-      currentUser = mapSupabaseProfile(profile);
-      currentRole = currentUser.role === 'admin' ? 'admin' : 'student';
-      saveAuthHint(currentUser, currentRole);
-      return true;
-    }
-
-    if (hint && hint.authId === session.user.id) {
-      currentUser = {
-        id: hint.studentId || session.user.user_metadata?.student_id || '',
-        authId: session.user.id,
-        name: hint.name || session.user.user_metadata?.name || '',
-        role: hint.role === 'admin' ? 'admin' : 'student',
-        class: hint.classroom || session.user.user_metadata?.classroom || '',
-        email: hint.email || session.user.email || ''
-      };
-      currentRole = currentUser.role;
-      return true;
-    }
-
-    // Last-resort recovery from Supabase Auth metadata. Never force a logout here.
-    const meta = session.user.user_metadata || {};
-    currentUser = {
-      id: meta.student_id || meta.username || session.user.email?.split('@')[0] || '',
-      authId: session.user.id,
-      name: meta.name || '',
-      role: meta.role === 'admin' ? 'admin' : 'student',
-      class: meta.classroom || '',
-      email: session.user.email || ''
-    };
-    currentRole = currentUser.role;
-    saveAuthHint(currentUser, currentRole);
-    return true;
-  } catch (error) {
-    console.error('Supabase session restore failed:', error);
-    // A transient startup error must not destroy the existing login session.
-    const { data } = await sb.auth.getSession().catch(() => ({ data: { session: null } }));
-    if (data?.session?.user) {
-      const hint = getAuthHint();
-      if (hint?.authId === data.session.user.id) {
-        currentUser = {
-          id: hint.studentId || '', authId: data.session.user.id,
-          name: hint.name || '', role: hint.role === 'admin' ? 'admin' : 'student',
-          class: hint.classroom || '', email: hint.email || data.session.user.email || ''
-        };
-        currentRole = currentUser.role;
-        return true;
-      }
-    }
-    return false;
-  }
+  inMemoryDB = normalizeDB(db);
 }
 
 function setButtonBusy(buttonId, busy, text = 'กำลังบันทึก...') {
