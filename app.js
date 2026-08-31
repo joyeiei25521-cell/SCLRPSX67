@@ -1046,6 +1046,23 @@ function renderReportImagePreviews() {
   `).join('');
 }
 
+function renderReportDetailPhotos(photos) {
+  const container = document.getElementById('report-detail-photos');
+  if (!container) return;
+
+  const list = Array.isArray(photos) ? photos.filter(Boolean) : [];
+  if (!list.length) {
+    container.innerHTML = '<div class="text-xs text-slate-400">ไม่มีรูปภาพแนบ</div>';
+    return;
+  }
+
+  container.innerHTML = list.map((photo, idx) => `
+    <a href="${scEscape(photo)}" target="_blank" rel="noopener" class="block overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700 hover:border-blue-300 transition">
+      <img src="${scEscape(photo)}" alt="ภาพประกอบ ${idx + 1}" class="w-full h-24 object-cover" loading="lazy">
+    </a>
+  `).join('');
+}
+
 
 async function prepareReportImage(file, reportId) {
   if (!file || !file.type.startsWith('image/')) throw new Error('รองรับเฉพาะไฟล์รูปภาพ');
@@ -1378,6 +1395,7 @@ function openReportDetailModal(id) {
   document.getElementById('report-detail-desc').innerText = r.description || '-';
   document.getElementById('report-detail-resdate').innerText = r.resolutionDate || '-';
   document.getElementById('report-detail-notes').innerText = r.notes || '- ไม่มีข้อมูลบันทึกเพิ่มเติม -';
+  renderReportDetailPhotos(r.photos);
 
   const badge = document.getElementById('report-detail-badge');
   badge.innerText = r.status.toUpperCase();
@@ -1952,6 +1970,21 @@ async function saveAdminLostFoundStatus(){if(!(await requireAdmin()))return;cons
 /* -------------------- admin dashboard -------------------- */
 async function renderAdminDashboard(){if(!(await requireAdmin()))return;try{await Promise.all([refreshRemoteReports(),refreshRemoteSongs(),refreshRemoteLostFound()]);}catch(e){console.error(e);}const r=db.reports||[];safeText('admin-kpi-reports',r.length);safeText('admin-kpi-completed',r.filter(x=>x.status==='completed').length);safeText('admin-kpi-processing',r.filter(x=>x.status==='processing'||x.status==='pending').length);const tbody=document.getElementById('admin-recent-reports-table');if(tbody)tbody.innerHTML=r.slice(0,5).map(x=>`<tr><td class="p-3">${scEscape(x.title)}</td><td class="p-3">${scEscape(x.reporterName)}</td><td class="p-3">${scEscape(x.status)}</td><td class="p-3 text-right"><button onclick="openReportDetailModal('${x.id}')" class="px-3 py-1 bg-blue-600 text-white rounded-lg">ดู</button></td></tr>`).join('');}
 
+function debounce(fn, delay = 180) {
+  let timer = null;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+
+const renderStudentChatDebounced = debounce(() => {
+  if (currentRole === 'student') renderStudentChat();
+}, 180);
+const renderAdminChatDebounced = debounce(() => {
+  if (currentRole === 'admin') renderAdminChat();
+}, 180);
+
 /* -------------------- admin report save/open using remote state -------------------- */
 function openReportDetailModal(id){const r=(db.reports||[]).find(item=>item.id===id);if(!r)return;safeText('report-detail-title',r.title);safeText('report-detail-classroom',r.classroom);safeText('report-detail-category',r.category);safeText('report-detail-location',r.location);safeText('report-detail-datetime',(r.datetime||'').replace('T',' '));safeText('report-detail-desc',r.description||'-');safeText('report-detail-resdate',r.resolutionDate||'-');safeText('report-detail-notes',r.notes||'- ไม่มีข้อมูลบันทึกเพิ่มเติม -');const badge=document.getElementById('report-detail-badge');if(badge){badge.innerText=(r.status||'').toUpperCase();}const adminSec=document.getElementById('admin-actions-section');const saveBtn=document.getElementById('admin-save-report-btn');if(currentRole==='admin'){adminSec?.classList.remove('hidden');saveBtn?.classList.remove('hidden');safeValue('admin-action-status',r.status);safeValue('admin-action-resdate',r.resolutionDate||'');safeValue('admin-action-notes',r.notes||'');saveBtn?.setAttribute('data-id',r.id);}else{adminSec?.classList.add('hidden');saveBtn?.classList.add('hidden');}document.getElementById('report-detail-modal')?.classList.remove('hidden');}
 
@@ -1962,8 +1995,11 @@ async function setupSupabaseRealtime(){
   scRealtimeChannel = sb.channel('school-council-live')
     .on('postgres_changes',{event:'*',schema:'public',table:'news'},()=>{refreshAllRemoteData().then(()=>{renderStudentNews();if(currentRole==='admin')renderAdminNews();});})
     .on('postgres_changes',{event:'*',schema:'public',table:'achievements'},()=>{refreshAllRemoteData().then(()=>{renderPublicAchievements();if(currentRole==='admin')renderAdminAchievements();});})
-    .on('postgres_changes',{event:'*',schema:'public',table:'chat_messages'},()=>{if(currentRole==='student')renderStudentChat();if(currentRole==='admin'){renderAdminChat();if(currentChatSessionId)renderAdminChatMessages(currentChatSessionId);}})
-    .on('postgres_changes',{event:'*',schema:'public',table:'chat_sessions'},()=>{if(currentRole==='admin')renderAdminChat();})
+    .on('postgres_changes',{event:'*',schema:'public',table:'chat_messages'},()=>{
+      renderStudentChatDebounced();
+      if(currentRole==='admin'){ renderAdminChatDebounced(); if(currentChatSessionId) setTimeout(() => renderAdminChatMessages(currentChatSessionId), 120); }
+    })
+    .on('postgres_changes',{event:'*',schema:'public',table:'chat_sessions'},()=>{if(currentRole==='admin')renderAdminChatDebounced();})
     .on('postgres_changes',{event:'*',schema:'public',table:'songs'},()=>{if(currentRole==='student')renderStudentSongs();if(currentRole==='admin')renderAdminSongs();})
     .on('postgres_changes',{event:'*',schema:'public',table:'lost_found'},()=>{if(currentRole==='student')renderStudentLostFound();if(currentRole==='admin')renderAdminLostFound();})
     .on('postgres_changes',{event:'*',schema:'public',table:'reports'},()=>{if(currentRole==='student'){refreshRemoteReports().then(()=>renderStudentTrack());}if(currentRole==='admin'){refreshRemoteReports().then(()=>{renderAdminReports();renderAdminDashboard();});}})
