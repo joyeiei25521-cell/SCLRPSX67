@@ -1567,6 +1567,36 @@ function mapChatMessage(row) {
   return { id: row.id, sessionId: row.session_id, senderId: row.sender_id, sender: row.sender_role, text: row.text || '', attachments: Array.isArray(row.attachments) ? row.attachments : [], time: new Date(row.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), createdAt: row.created_at };
 }
 
+const CHAT_UNREAD_KEY = 'sc_chat_unread_map_v1';
+function getChatUnreadMap() {
+  try {
+    return JSON.parse(localStorage.getItem(CHAT_UNREAD_KEY) || '{}');
+  } catch (e) {
+    return {};
+  }
+}
+function setChatUnreadMap(map) {
+  try {
+    localStorage.setItem(CHAT_UNREAD_KEY, JSON.stringify(map));
+  } catch (e) {
+    console.warn('Chat unread state could not be stored:', e);
+  }
+}
+function isSessionUnread(sessionId, lastMessageAt) {
+  if (!sessionId || !lastMessageAt) return false;
+  const map = getChatUnreadMap();
+  const lastSeen = Number(map[sessionId] || 0);
+  const lastTs = new Date(lastMessageAt).getTime();
+  return lastTs > lastSeen;
+}
+function markSessionRead(sessionId, lastMessageAt = null) {
+  if (!sessionId) return;
+  const map = getChatUnreadMap();
+  if (lastMessageAt) map[sessionId] = new Date(lastMessageAt).getTime();
+  else map[sessionId] = Date.now();
+  setChatUnreadMap(map);
+}
+
 function getRemoteDBShell() {
   return normalizeDB({
     adminAuth: null,
@@ -1812,7 +1842,20 @@ async function renderAdminChat() {
     const { data, error } = await sb.from('chat_sessions').select('*').order('last_message_at', { ascending: false });
     if (error) throw error;
     const sessions = (data || []).map(mapChatSession);
-    list.innerHTML = sessions.map(s => `<button type="button" onclick="selectAdminChatSession('${s.id}')" class="w-full text-left p-3 rounded-2xl border ${currentChatSessionId===s.id?'border-blue-500 bg-blue-50 dark:bg-blue-950/40':'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'} hover:border-blue-400 transition"><div class="font-extrabold text-xs text-slate-800 dark:text-white">${scEscape(s.studentName)}</div><div class="text-[10px] text-slate-400 mt-1">${scEscape(s.studentId)} · ${scEscape(s.classroom)}</div><div class="text-[9px] text-slate-400 mt-1">${scEscape(new Date(s.lastMessageAt).toLocaleString())}</div></button>`).join('') || '<div class="text-xs text-slate-400 p-4">ยังไม่มีห้องแชท</div>';
+    list.innerHTML = sessions.map(s => {
+      const unread = currentChatSessionId !== s.id && isSessionUnread(s.id, s.lastMessageAt);
+      const active = currentChatSessionId === s.id;
+      return `<button type="button" onclick="selectAdminChatSession('${s.id}')" class="w-full text-left p-3 rounded-2xl border ${active ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/40' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'} hover:border-blue-400 transition relative">
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0 flex-1">
+            <div class="font-extrabold text-xs text-slate-800 dark:text-white truncate">${scEscape(s.studentName)}</div>
+            <div class="text-[10px] text-slate-400 mt-1 truncate">${scEscape(s.studentId)} · ${scEscape(s.classroom)}</div>
+            <div class="text-[9px] text-slate-400 mt-1">${scEscape(new Date(s.lastMessageAt).toLocaleString())}</div>
+          </div>
+          ${unread ? '<span class="inline-flex items-center justify-center min-w-[1.35rem] h-5 px-1.5 rounded-full bg-rose-500 text-[9px] font-bold text-white">ใหม่</span>' : ''}
+        </div>
+      </button>`;
+    }).join('') || '<div class="text-xs text-slate-400 p-4">ยังไม่มีห้องแชท</div>';
     if (!currentChatSessionId && sessions[0]) currentChatSessionId = sessions[0].id;
     if (currentChatSessionId) await renderAdminChatMessages(currentChatSessionId);
   } catch (e) { console.error(e); showToast('โหลดห้องแชทไม่สำเร็จ: ' + e.message, 'error'); }
@@ -1820,6 +1863,7 @@ async function renderAdminChat() {
 
 async function selectAdminChatSession(sessionId) {
   currentChatSessionId = sessionId;
+  markSessionRead(sessionId, new Date().toISOString());
   await renderAdminChat();
 }
 
@@ -1831,6 +1875,7 @@ async function renderAdminChatMessages(sessionId) {
     if (caption && session) caption.innerText = `${session.student_name} · ${session.student_id} · ${session.classroom || ''}`;
     const messages = await fetchChatMessages(sessionId);
     container.innerHTML = messages.map(m => `<div class="flex flex-col ${m.sender==='admin'?'items-end':'items-start'}"><div class="max-w-[80%] p-3.5 rounded-2xl text-xs ${m.sender==='admin'?'bg-emerald-600 text-white rounded-br-none':'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-bl-none'} shadow-sm"><p class="leading-relaxed">${scEscape(m.text)}</p>${(m.attachments||[]).map(a=>`<img src="${scEscape(a.dataUrl||a.url||'')}" class="mt-2 max-w-full max-h-48 rounded-xl object-cover">`).join('')}</div><span class="text-[9px] text-slate-400 mt-1">${scEscape(m.time)}</span></div>`).join('') || '<div class="text-center text-slate-400 py-12">ยังไม่มีข้อความ</div>';
+    if (sessionId === currentChatSessionId) markSessionRead(sessionId, session?.last_message_at || new Date().toISOString());
     container.scrollTop = container.scrollHeight;
   } catch (e) { console.error(e); }
 }
@@ -1933,7 +1978,16 @@ async function setupSupabaseRealtime(){
     .on('postgres_changes',{event:'*',schema:'public',table:'chat_sessions'},()=>{if(currentRole==='admin')renderAdminChatDebounced();})
     .on('postgres_changes',{event:'*',schema:'public',table:'songs'},()=>{if(currentRole==='student')renderStudentSongs();if(currentRole==='admin')renderAdminSongs();})
     .on('postgres_changes',{event:'*',schema:'public',table:'lost_found'},()=>{if(currentRole==='student')renderStudentLostFound();if(currentRole==='admin')renderAdminLostFound();})
-    .on('postgres_changes',{event:'*',schema:'public',table:'reports'},()=>{if(currentRole==='student'){refreshRemoteReports().then(()=>renderStudentTrack());}if(currentRole==='admin'){refreshRemoteReports().then(()=>{renderAdminReports();renderAdminDashboard();});}})
+    .on('postgres_changes',{event:'*',schema:'public',table:'reports'},()=>{
+      refreshRemoteReports().then(() => {
+        renderPublicAchievements();
+        if (currentRole === 'student') renderStudentTrack();
+        if (currentRole === 'admin') {
+          renderAdminReports();
+          renderAdminDashboard();
+        }
+      });
+    })
     .subscribe();
 }
 
