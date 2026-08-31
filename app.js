@@ -96,25 +96,61 @@ async function refreshRemoteUsers() {
 async function restoreSupabaseSession() {
   if (!isSupabaseReady()) return false;
   try {
-    const { data: { session } } = await sb.auth.getSession();
+    const { data: sessionData, error: sessionError } = await sb.auth.getSession();
+    if (sessionError) throw sessionError;
+    const session = sessionData?.session;
     if (!session?.user) return false;
 
-    const { data: profile, error } = await sb
+    // Never sign the user out just because a profile/data request temporarily fails.
+    // Supabase Auth is the source of truth for the persistent session.
+    const { data: profile, error: profileError } = await sb
       .from('profiles')
       .select('id,student_id,name,role,classroom,email')
       .eq('id', session.user.id)
       .maybeSingle();
 
-    if (error) throw error;
+    if (profileError) {
+      console.warn('Profile restore failed; keeping authenticated session:', profileError);
+      const hint = getAuthHint();
+      if (hint && hint.authId === session.user.id) {
+        currentUser = {
+          authId: session.user.id,
+          id: hint.studentId || '',
+          name: hint.name || '',
+          role: hint.role === 'admin' ? 'admin' : 'student',
+          class: hint.classroom || '',
+          email: hint.email || session.user.email || ''
+        };
+        currentRole = currentUser.role;
+        return true;
+      }
+      // We still have a valid Auth session. Do not force a logout.
+      return false;
+    }
+
     if (!profile) {
-      await sb.auth.signOut();
+      console.warn('No profile found for authenticated user; keeping session instead of signing out.');
+      const hint = getAuthHint();
+      if (hint && hint.authId === session.user.id) {
+        currentUser = {
+          authId: session.user.id,
+          id: hint.studentId || '',
+          name: hint.name || '',
+          role: hint.role === 'admin' ? 'admin' : 'student',
+          class: hint.classroom || '',
+          email: hint.email || session.user.email || ''
+        };
+        currentRole = currentUser.role;
+        return true;
+      }
       return false;
     }
 
     currentUser = mapSupabaseProfile(profile);
     currentRole = currentUser.role === 'admin' ? 'admin' : 'student';
-    await refreshRemoteReports();
-    await refreshRemoteUsers();
+    saveAuthHint(currentUser, currentRole);
+    try { await refreshRemoteReports(); } catch (e) { console.warn('Reports restore skipped:', e); }
+    try { await refreshRemoteUsers(); } catch (e) { console.warn('Users restore skipped:', e); }
     return true;
   } catch (error) {
     console.error('Supabase session restore failed:', error);
@@ -1070,10 +1106,34 @@ function initReportImageUploader() {
 }
 
 async function submitProblemReport() {
-  if (currentRole !== 'student' || !currentUser?.authId) {
-    showToast('กรุณาเข้าสู่ระบบนักเรียนก่อนแจ้งปัญหา', 'error');
+  // Re-check the real Supabase session immediately before submitting.
+  // This prevents false 'please login' redirects after a page reload or token refresh.
+  if (!isSupabaseReady()) {
+    showToast('ยังไม่ได้ตั้งค่า Supabase', 'error');
+    return;
+  }
+  const { data: sessionData, error: sessionError } = await sb.auth.getSession();
+  if (sessionError || !sessionData?.session?.user) {
+    showToast('เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง', 'error');
     switchTab('login');
     return;
+  }
+  const authUserId = sessionData.session.user.id;
+
+  // Always use the Auth UUID returned by Supabase, never a cached/local value.
+  if (currentRole !== 'student' || !currentUser) {
+    const { data: profile, error: profileError } = await sb
+      .from('profiles')
+      .select('id,student_id,name,role,classroom,email')
+      .eq('id', authUserId)
+      .maybeSingle();
+    if (profileError || !profile || profile.role !== 'student') {
+      showToast('ไม่พบสิทธิ์นักเรียนของบัญชีนี้', 'error');
+      return;
+    }
+    currentUser = mapSupabaseProfile(profile);
+    currentRole = 'student';
+    saveAuthHint(currentUser, currentRole);
   }
 
   const name = document.getElementById('report-form-name').value.trim();
@@ -1099,7 +1159,7 @@ async function submitProblemReport() {
 
   const payload = {
     id: reportId,
-    user_id: currentUser.authId,
+    user_id: authUserId,
     reporter_name: name,
     reporter_id: studentId,
     classroom,

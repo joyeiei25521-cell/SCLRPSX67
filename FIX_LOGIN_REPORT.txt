@@ -1,0 +1,8 @@
+แก้รอบนี้:
+- ไม่ signOut อัตโนมัติเมื่อ profile/data โหลดพลาด
+- restore session จาก Supabase Auth ก่อนเข้าเว็บ
+- ก่อนส่งคำร้องเรียน ตรวจ session จริงอีกครั้ง
+- reports.user_id ใช้ auth.users.id จาก session โดยตรง
+- รูปคำร้องเรียนสูงสุด 20MB/รูป (5 รูป)
+
+สำคัญ: ถ้า Supabase Storage bucket school-images ยังไม่ตั้ง 20MB ให้รันส่วน Storage ใน supabase_schema.sql อีกครั้ง
