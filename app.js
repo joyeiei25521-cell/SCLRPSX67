@@ -948,8 +948,8 @@ function renderReportImagePreviews() {
 
 async function prepareReportImage(file, reportId) {
   if (!file || !file.type.startsWith('image/')) throw new Error('รองรับเฉพาะไฟล์รูปภาพ');
-  const maxSize = 8 * 1024 * 1024;
-  if (file.size > maxSize) throw new Error(`${file.name} ใหญ่เกิน 8MB`);
+  const maxSize = 20 * 1024 * 1024;
+  if (file.size > maxSize) throw new Error(`${file.name} ใหญ่เกิน 20MB`);
 
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
   const safeExt = ['jpg','jpeg','png','webp'].includes(ext) ? ext : 'jpg';
@@ -990,8 +990,8 @@ function handleReportImagesChange(files) {
       showToast(`${file.name} ไม่ใช่ไฟล์รูปภาพ`, 'error');
       return;
     }
-    if (file.size > 8 * 1024 * 1024) {
-      showToast(`${file.name} ใหญ่เกิน 8MB`, 'error');
+    if (file.size > 20 * 1024 * 1024) {
+      showToast(`${file.name} ใหญ่เกิน 20MB`, 'error');
       return;
     }
 
@@ -1812,15 +1812,20 @@ async function initApp(){
   if(appInitialized) return; appInitialized=true; showLoadingOverlay();
   try{
     db=getRemoteDBShell();
-    // Always start at the login screen. Any previous Supabase session is
-    // intentionally cleared so this deployment never bypasses the login page.
+
+    // Keep the Supabase session between page reloads/browser restarts.
+    // If a valid session exists, restore it and go straight to the correct area.
     const restored=await restoreSupabaseSession();
-    if (restored) {
-      await signOutSupabase();
-    }
+
     await refreshAllRemoteData();
     updateUIAuth();
-    switchTab('login');
+
+    if (restored) {
+      switchTab(currentRole === 'admin' ? 'admin-dashboard' : 'student-news');
+    } else {
+      switchTab('login');
+    }
+
     await setupSupabaseRealtime();
   }catch(e){console.error('App init failed:',e);updateUIAuth();switchTab('login');showToast('เริ่มระบบไม่สำเร็จ: '+(e.message||e),'error');}
   finally{window.setTimeout(hideLoadingOverlay,400);}
@@ -1838,7 +1843,7 @@ function handleChatFileChange(role) {
   const pending = [];
   Promise.all(files.map(file => new Promise((resolve, reject) => {
     if (!file.type.startsWith('image/')) return resolve(null);
-    if (file.size > 2 * 1024 * 1024) { showToast(`${file.name} ใหญ่เกิน 2MB`, 'error'); return resolve(null); }
+    if (file.size > 10 * 1024 * 1024) { showToast(`${file.name} ใหญ่เกิน 10MB`, 'error'); return resolve(null); }
     const reader = new FileReader();
     reader.onload = () => resolve({ name: file.name, type: file.type, dataUrl: reader.result });
     reader.onerror = reject;
