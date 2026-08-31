@@ -1670,10 +1670,13 @@
   </div>
 
   <!-- Loading Overlay -->
-  <div id="loading-overlay" class="fixed inset-0 bg-slate-950/70 z-[999] flex items-center justify-center p-4 hidden modal-backdrop">
-    <div class="flex flex-col items-center bg-white dark:bg-slate-800 p-8 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-2xl">
-      <i class="fa-solid fa-spinner text-4xl text-blue-600 dark:text-blue-400 animate-spin mb-4"></i>
-      <span class="text-xs font-extrabold tracking-wide">กำลังดำเนินการประมวลผล...</span>
+  <div id="loading-overlay" class="fixed inset-0 bg-slate-950/70 z-[999] flex items-center justify-center p-4 hidden modal-backdrop" aria-hidden="true">
+    <div class="flex flex-col items-center bg-white/95 dark:bg-slate-800/95 p-8 rounded-3xl border border-slate-200/80 dark:border-slate-700 shadow-2xl backdrop-blur-xl">
+      <div class="loading-ring flex items-center justify-center w-16 h-16 rounded-full border-4 border-blue-100 dark:border-slate-700 border-t-blue-600 dark:border-t-blue-400 mb-4">
+        <i class="fa-solid fa-wand-sparkles text-xl text-blue-600 dark:text-blue-400"></i>
+      </div>
+      <span class="text-sm font-extrabold tracking-[0.2em] text-slate-700 dark:text-slate-200 uppercase">Processing</span>
+      <span class="mt-2 text-[11px] font-medium text-slate-500 dark:text-slate-400">กำลังดำเนินการประมวลผล...</span>
     </div>
   </div>
 

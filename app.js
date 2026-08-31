@@ -344,12 +344,16 @@ function showToast(msg, type = 'info') {
 
 function showLoadingOverlay() {
   const overlay = document.getElementById('loading-overlay');
-  if (overlay) overlay.classList.remove('hidden');
+  if (!overlay) return;
+  overlay.classList.remove('hidden');
+  overlay.setAttribute('aria-hidden', 'false');
 }
 
 function hideLoadingOverlay() {
   const overlay = document.getElementById('loading-overlay');
-  if (overlay) overlay.classList.add('hidden');
+  if (!overlay) return;
+  overlay.classList.add('hidden');
+  overlay.setAttribute('aria-hidden', 'true');
 }
 
 // Navigation & Tab Switching
@@ -1262,7 +1266,6 @@ async function submitProblemReport() {
     if (error) {
       console.error('Report insert failed:', error);
       showToast('บันทึกเรื่องร้องเรียนไม่สำเร็จ: ' + error.message, 'error');
-      hideLoadingOverlay();
       return;
     }
 
@@ -1271,6 +1274,7 @@ async function submitProblemReport() {
 
     uploadedReportImages = [];
     reportImageFiles = [];
+    renderReportImagePreviews();
     showToast('ส่งเรื่องร้องเรียนและบันทึกลงฐานข้อมูลแล้ว', 'success');
     switchTab('student-track');
   } catch (submitError) {
@@ -1279,38 +1283,6 @@ async function submitProblemReport() {
   } finally {
     hideLoadingOverlay();
   }
-
-  /*
-  const { data, error } = await sb.from('reports').insert(payload).select('*').single();
-
-  if (error) {
-    console.error('Report insert failed:', error);
-    showToast('บันทึกเรื่องร้องเรียนไม่สำเร็จ: ' + error.message, 'error');
-    return;
-  }
-
-  db.reports.unshift(mapSupabaseReport(data));
-  inMemoryDB = normalizeDB(db);
-
-  uploadedReportImages = [];
-  reportImageFiles = [];
-  showToast('ส่งเรื่องร้องเรียนและบันทึกลงฐานข้อมูลแล้ว', 'success');
-  switchTab('student-track');
-  */
-
-  if (error) {
-    console.error('Report insert failed:', error);
-    showToast('บันทึกเรื่องร้องเรียนไม่สำเร็จ: ' + error.message, 'error');
-    return;
-  }
-
-  db.reports.unshift(mapSupabaseReport(data));
-  inMemoryDB = normalizeDB(db);
-
-  uploadedReportImages = [];
-  reportImageFiles = [];
-  showToast('ส่งเรื่องร้องเรียนและบันทึกลงฐานข้อมูลแล้ว', 'success');
-  switchTab('student-track');
 }
 
 // 5. STUDENT TRACK CONTROLLER
@@ -1382,47 +1354,6 @@ function renderStudentTrack() {
 }
 
 // Modal Detail Viewer
-function openReportDetailModal(id) {
-  db = loadDB();
-  const r = db.reports.find(item => item.id === id);
-  if (!r) return;
-
-  document.getElementById('report-detail-title').innerText = r.title;
-  document.getElementById('report-detail-classroom').innerText = r.classroom;
-  document.getElementById('report-detail-category').innerText = r.category;
-  document.getElementById('report-detail-location').innerText = r.location;
-  document.getElementById('report-detail-datetime').innerText = r.datetime.replace('T', ' ');
-  document.getElementById('report-detail-desc').innerText = r.description || '-';
-  document.getElementById('report-detail-resdate').innerText = r.resolutionDate || '-';
-  document.getElementById('report-detail-notes').innerText = r.notes || '- ไม่มีข้อมูลบันทึกเพิ่มเติม -';
-  renderReportDetailPhotos(r.photos);
-
-  const badge = document.getElementById('report-detail-badge');
-  badge.innerText = r.status.toUpperCase();
-  badge.className = `px-3 py-1 rounded-full text-[10px] font-extrabold uppercase ${
-    r.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-    r.status === 'processing' ? 'bg-amber-100 text-amber-700' :
-    r.status === 'failed' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-700'
-  }`;
-
-  // Admin Section Toggle
-  const adminSec = document.getElementById('admin-actions-section');
-  const saveBtn = document.getElementById('admin-save-report-btn');
-  if (currentRole === 'admin') {
-    adminSec.classList.remove('hidden');
-    saveBtn.classList.remove('hidden');
-    document.getElementById('admin-action-status').value = r.status;
-    document.getElementById('admin-action-resdate').value = r.resolutionDate || '';
-    document.getElementById('admin-action-notes').value = r.notes || '';
-    saveBtn.setAttribute('data-id', r.id);
-  } else {
-    adminSec.classList.add('hidden');
-    saveBtn.classList.add('hidden');
-  }
-
-  document.getElementById('report-detail-modal').classList.remove('hidden');
-}
-
 function closeReportDetailModal() {
   document.getElementById('report-detail-modal').classList.add('hidden');
 }
