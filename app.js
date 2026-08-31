@@ -134,12 +134,16 @@ async function restoreSupabaseSession() {
     const { data: sessionData, error: sessionError } = await sb.auth.getSession();
     if (sessionError) throw sessionError;
     const session = sessionData?.session;
+    const hint = getAuthHint();
+
     if (!session?.user) {
-      clearAuthHint();
+      if (hint && hint.authId) {
+        hydrateCurrentUserFromSession({ user: { id: hint.authId, email: hint.email || '', user_metadata: { name: hint.name || '', student_id: hint.studentId || '', classroom: hint.classroom || '', role: hint.role || 'student' } } }, hint);
+        return true;
+      }
       return false;
     }
 
-    const hint = getAuthHint();
     const { data: profile, error: profileError } = await sb
       .from('profiles')
       .select('id,student_id,name,role,classroom,email')
@@ -1928,7 +1932,7 @@ async function initApp(){
     await refreshAllRemoteData();
     updateUIAuth();
 
-    if (restored || persistedHint) {
+    if (restored || persistedHint || (currentRole !== 'guest' && currentUser)) {
       switchTab(currentRole === 'admin' ? 'admin-dashboard' : 'student-news');
     } else {
       switchTab('login');
