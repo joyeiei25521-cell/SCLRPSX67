@@ -342,6 +342,16 @@ function showToast(msg, type = 'info') {
   }, 4000);
 }
 
+function showLoadingOverlay() {
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) overlay.classList.remove('hidden');
+}
+
+function hideLoadingOverlay() {
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) overlay.classList.add('hidden');
+}
+
 // Navigation & Tab Switching
 function switchTab(tabId) {
   currentTab = tabId;
@@ -1225,12 +1235,51 @@ async function submitProblemReport() {
   } catch (uploadError) {
     console.error('Report image upload failed:', uploadError);
     showToast('อัปโหลดรูปไม่สำเร็จ: ' + (uploadError.message || uploadError), 'error');
+    hideLoadingOverlay();
     return;
+  }
+
+  try {
+    const { data, error } = await sb.from('reports').insert(payload).select('*').single();
+
+    if (error) {
+      console.error('Report insert failed:', error);
+      showToast('บันทึกเรื่องร้องเรียนไม่สำเร็จ: ' + error.message, 'error');
+      hideLoadingOverlay();
+      return;
+    }
+
+    db.reports.unshift(mapSupabaseReport(data));
+    inMemoryDB = normalizeDB(db);
+
+    uploadedReportImages = [];
+    reportImageFiles = [];
+    showToast('ส่งเรื่องร้องเรียนและบันทึกลงฐานข้อมูลแล้ว', 'success');
+    switchTab('student-track');
+  } catch (submitError) {
+    console.error('Report submit crashed:', submitError);
+    showToast('ส่งเรื่องร้องเรียนไม่สำเร็จ: ' + (submitError?.message || submitError), 'error');
   } finally {
     hideLoadingOverlay();
   }
 
+  /*
   const { data, error } = await sb.from('reports').insert(payload).select('*').single();
+
+  if (error) {
+    console.error('Report insert failed:', error);
+    showToast('บันทึกเรื่องร้องเรียนไม่สำเร็จ: ' + error.message, 'error');
+    return;
+  }
+
+  db.reports.unshift(mapSupabaseReport(data));
+  inMemoryDB = normalizeDB(db);
+
+  uploadedReportImages = [];
+  reportImageFiles = [];
+  showToast('ส่งเรื่องร้องเรียนและบันทึกลงฐานข้อมูลแล้ว', 'success');
+  switchTab('student-track');
+  */
 
   if (error) {
     console.error('Report insert failed:', error);
