@@ -63,6 +63,22 @@ function hydrateCurrentUserFromSession(session, hint = null) {
   return nextUser;
 }
 
+function hydrateCurrentUserFromHint() {
+  const hint = getAuthHint();
+  if (!hint || !hint.authId) return false;
+
+  currentUser = {
+    id: hint.studentId || '',
+    authId: hint.authId,
+    name: hint.name || '',
+    role: hint.role === 'admin' ? 'admin' : 'student',
+    class: hint.classroom || '',
+    email: hint.email || ''
+  };
+  currentRole = currentUser.role;
+  return true;
+}
+
 function mapSupabaseReport(row) {
   return {
     id: row.id,
@@ -1906,14 +1922,13 @@ async function initApp(){
   try{
     db=getRemoteDBShell();
 
-    // Keep the Supabase session between page reloads/browser restarts.
-    // If a valid session exists, restore it and go straight to the correct area.
-    const restored=await restoreSupabaseSession();
+    const persistedHint = hydrateCurrentUserFromHint();
+    const restored = await restoreSupabaseSession();
 
     await refreshAllRemoteData();
     updateUIAuth();
 
-    if (restored) {
+    if (restored || persistedHint) {
       switchTab(currentRole === 'admin' ? 'admin-dashboard' : 'student-news');
     } else {
       switchTab('login');
@@ -1965,8 +1980,19 @@ if (isSupabaseReady()) {
       currentRole = 'guest';
       updateUIAuth();
       if (document.readyState !== 'loading') switchTab('login');
-    } else if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user && currentUser) {
-      saveAuthHint(currentUser, currentRole);
+      return;
+    }
+
+    if (session?.user && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED')) {
+      const hint = getAuthHint();
+      const hydrated = hydrateCurrentUserFromSession(session, hint) || hydrateCurrentUserFromHint();
+      if (hydrated) {
+        updateUIAuth();
+        if (document.readyState !== 'loading' && currentRole !== 'guest') {
+          const targetTab = currentRole === 'admin' ? 'admin-dashboard' : 'student-news';
+          if (currentTab === 'login' || currentTab === 'public-achievements') switchTab(targetTab);
+        }
+      }
     }
   });
 }
