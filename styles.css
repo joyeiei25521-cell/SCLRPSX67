@@ -483,14 +483,26 @@ img:hover {
 
 @media (max-width: 768px) {
   /* Prevent horizontal scrolling and improve touch feel */
-  body {
+  html, body {
+    overflow-x: hidden;
     font-size: 14px;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
   }
 
   /* Compact Padding for Mobile Devices */
   main {
     padding: 1rem !important;
+  }
+
+  .main-content,
+  .container,
+  section {
+    width: 100%;
+    max-width: 100%;
   }
 
   /* Hero Banner Mobile Styling */
@@ -509,6 +521,12 @@ img:hover {
     min-height: 44px;
   }
 
+  textarea,
+  input,
+  select {
+    font-size: 16px !important;
+  }
+
   /* Full screen smooth mobile modal panel */
   .modal-panel {
     max-height: 90vh !important;
@@ -516,6 +534,18 @@ img:hover {
     border-bottom-left-radius: 0 !important;
     border-bottom-right-radius: 0 !important;
     margin-bottom: 0 !important;
+  }
+
+  /* Better phone stacking for form sections */
+  .grid-cols-1, .grid-cols-2, .grid-cols-3,
+  .md\:grid-cols-2, .md\:grid-cols-3, .xl\:grid-cols-\[300px_1fr\] {
+    gap: 0.8rem !important;
+  }
+
+  .space-y-6 > * + *,
+  .space-y-4 > * + *,
+  .space-y-3 > * + * {
+    margin-top: 0.85rem !important;
   }
 
   /* Mobile Grid adjustment for stat cards */
@@ -529,12 +559,28 @@ img:hover {
     border-radius: 1.25rem;
   }
 
+  /* Fix chat areas on phone */
+  #student-chat-list,
+  #admin-chat-list,
+  #student-track-list {
+    max-height: 50vh !important;
+    min-height: 18rem !important;
+  }
+
   /* Toast notification on mobile */
   #app-toast {
     left: 4vw !important;
     right: 4vw !important;
     width: 92vw !important;
     top: 1rem !important;
+  }
+
+  /* Keep action buttons usable inside cards */
+  .flex-wrap button,
+  .flex button,
+  .flex-wrap a,
+  .flex a {
+    min-height: 44px;
   }
 }
 
