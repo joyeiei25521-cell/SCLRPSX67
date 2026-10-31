@@ -70,14 +70,16 @@
 The admin login has a separate "สร้างบัญชีผู้ดูแล" form. It requires the Edge Function `create-admin` and a Supabase Function secret named `ADMIN_SETUP_CODE`. Do not put the setup code in browser code. Deploy `create-admin`, turn off Verify JWT for this public registration function, and set `ADMIN_SETUP_CODE` in Edge Function Secrets.
 
 ## Login-first behavior
-- The application always opens on the Login screen.
-- A previously stored Supabase session is cleared on startup, so the login screen cannot be bypassed after reopening the site.
+- On startup, the app restores a valid Supabase Auth session and checks its matching `profiles` row before opening a signed-in view.
+- Cached browser profile data never grants access; if there is no valid Supabase session, the app opens on the Login screen.
+- A temporary data refresh failure does not invalidate a successfully restored session.
 - Admin authentication remains Supabase Auth + `profiles.role = 'admin'`; credentials are not treated as a client-side security check.
 
 
-## อัปโหลดรูปแจ้งปัญหา
-ระบบอัปโหลดรูปแจ้งปัญหาไปที่ Supabase Storage bucket `school-images` โดยตรง แทนการเก็บ Base64 ลงฐานข้อมูล
-- เลือก/ลากรูปได้สูงสุด 5 รูปต่อเรื่อง
+## อัปโหลดรูปภาพ
+ระบบอัปโหลดรูปแจ้งปัญหาและรายการของหาย/เก็บได้ไปที่ Supabase Storage bucket `school-images` โดยตรง แทนการเก็บ Base64 ลงฐานข้อมูล
+- เรื่องแจ้งปัญหาเลือก/ลากรูปได้สูงสุด 5 รูปต่อเรื่อง
 - รองรับ JPG, PNG, WEBP
 - จำกัด 8MB ต่อรูป
+- รายการของหาย/เก็บได้อัปโหลดได้ 1 รูปต่อรายการ โดยใช้ bucket เดียวกันและข้อจำกัดเดียวกัน
 - ต้องรัน `supabase_schema.sql` เวอร์ชันนี้เพื่อสร้าง bucket และ Storage policies

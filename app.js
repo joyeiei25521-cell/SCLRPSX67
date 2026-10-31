@@ -4,6 +4,7 @@
 
 // Local Storage Helper
 const DB_KEY = 'LRP_STUDENT_COUNCIL_DB';
+const MAX_SCHOOL_IMAGE_BYTES = 8 * 1024 * 1024;
 // Supabase-backed core data/auth.
 // The browser only uses the Supabase publishable key. Never put a service_role/secret key here.
 const sb = window.schoolSupabase || null;
@@ -12,24 +13,7 @@ function isSupabaseReady() {
   return !!(sb && typeof sb.auth?.signInWithPassword === 'function');
 }
 
-// Remember the signed-in account locally. Supabase still stores the real session/token securely.
 const AUTH_HINT_KEY = 'sc_student_council_auth_hint_v2';
-function saveAuthHint(user, role) {
-  try {
-    if (!user) return;
-    localStorage.setItem(AUTH_HINT_KEY, JSON.stringify({
-      authId: user.authId || user.id || '',
-      role: role || user.role || 'student',
-      name: user.name || '',
-      studentId: user.id || user.studentId || '',
-      classroom: user.class || user.classroom || '',
-      email: user.email || ''
-    }));
-  } catch (e) { console.warn('Could not save auth hint:', e); }
-}
-function getAuthHint() {
-  try { return JSON.parse(localStorage.getItem(AUTH_HINT_KEY) || 'null'); } catch (e) { return null; }
-}
 function clearAuthHint() { try { localStorage.removeItem(AUTH_HINT_KEY); } catch (e) {} }
 
 function mapSupabaseProfile(row) {
@@ -44,39 +28,13 @@ function mapSupabaseProfile(row) {
   };
 }
 
-function hydrateCurrentUserFromSession(session, hint = null) {
-  if (!session?.user) return null;
+function hydrateCurrentUserFromSession(session, profile) {
+  if (!session?.user || !profile || profile.id !== session.user.id) return null;
+  if (profile.role !== 'student' && profile.role !== 'admin') return null;
 
-  const meta = session.user.user_metadata || {};
-  const nextUser = {
-    id: hint?.studentId || meta.student_id || meta.username || session.user.email?.split('@')[0] || '',
-    authId: session.user.id,
-    name: hint?.name || meta.name || '',
-    role: hint?.role === 'admin' || meta.role === 'admin' ? 'admin' : 'student',
-    class: hint?.classroom || meta.classroom || '',
-    email: hint?.email || session.user.email || ''
-  };
-
-  currentUser = nextUser;
-  currentRole = nextUser.role;
-  saveAuthHint(currentUser, currentRole);
-  return nextUser;
-}
-
-function hydrateCurrentUserFromHint() {
-  const hint = getAuthHint();
-  if (!hint || !hint.authId) return false;
-
-  currentUser = {
-    id: hint.studentId || '',
-    authId: hint.authId,
-    name: hint.name || '',
-    role: hint.role === 'admin' ? 'admin' : 'student',
-    class: hint.classroom || '',
-    email: hint.email || ''
-  };
+  currentUser = mapSupabaseProfile(profile);
   currentRole = currentUser.role;
-  return true;
+  return currentUser;
 }
 
 function mapSupabaseReport(row) {
@@ -134,13 +92,11 @@ async function restoreSupabaseSession() {
     const { data: sessionData, error: sessionError } = await sb.auth.getSession();
     if (sessionError) throw sessionError;
     const session = sessionData?.session;
-    const hint = getAuthHint();
 
     if (!session?.user) {
-      if (hint && hint.authId) {
-        hydrateCurrentUserFromSession({ user: { id: hint.authId, email: hint.email || '', user_metadata: { name: hint.name || '', student_id: hint.studentId || '', classroom: hint.classroom || '', role: hint.role || 'student' } } }, hint);
-        return true;
-      }
+      clearAuthHint();
+      currentUser = null;
+      currentRole = 'guest';
       return false;
     }
 
@@ -150,50 +106,30 @@ async function restoreSupabaseSession() {
       .eq('id', session.user.id)
       .maybeSingle();
 
-    if (profileError) {
-      console.warn('Profile restore failed; keeping authenticated session:', profileError);
-      if (hint && hint.authId === session.user.id) {
-        hydrateCurrentUserFromSession(session, hint);
-        return true;
-      }
-      hydrateCurrentUserFromSession(session);
-      return true;
+    if (profileError) throw profileError;
+    if (!profile || !hydrateCurrentUserFromSession(session, profile)) {
+      clearAuthHint();
+      currentUser = null;
+      currentRole = 'guest';
+      return false;
     }
 
-    if (!profile) {
-      console.warn('No profile found for authenticated user; keeping session instead of signing out.');
-      if (hint && hint.authId === session.user.id) {
-        hydrateCurrentUserFromSession(session, hint);
-        return true;
-      }
-      hydrateCurrentUserFromSession(session);
-      return true;
-    }
-
-    currentUser = mapSupabaseProfile(profile);
-    currentRole = currentUser.role === 'admin' ? 'admin' : 'student';
-    saveAuthHint(currentUser, currentRole);
-    try { await refreshRemoteReports(); } catch (e) { console.warn('Reports restore skipped:', e); }
-    try { await refreshRemoteUsers(); } catch (e) { console.warn('Users restore skipped:', e); }
     return true;
   } catch (error) {
     console.error('Supabase session restore failed:', error);
-    const fallbackHint = getAuthHint();
-    const { data } = await sb.auth.getSession().catch(() => ({ data: { session: null } }));
-    if (data?.session?.user) {
-      hydrateCurrentUserFromSession(data.session, fallbackHint);
-      return true;
-    }
+    currentUser = null;
+    currentRole = 'guest';
+    showToast('ตรวจสอบสถานะบัญชีไม่สำเร็จ กรุณาลองใหม่อีกครั้ง', 'error');
     return false;
   }
 }
 
 async function signOutSupabase() {
-  clearAuthHint();
   if (isSupabaseReady()) {
     const { error } = await sb.auth.signOut();
-    if (error) console.error('Supabase sign out failed:', error);
+    if (error) throw error;
   }
+  clearAuthHint();
   currentUser = null;
   currentRole = 'guest';
 }
@@ -356,9 +292,30 @@ function hideLoadingOverlay() {
   overlay.setAttribute('aria-hidden', 'true');
 }
 
+function openModal(id) {
+  const modal = document.getElementById(id);
+  if (!modal) return;
+  clearTimeout(modal.closeTimer);
+  modal.classList.remove('is-closing', 'hidden');
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeModal(id) {
+  const modal = document.getElementById(id);
+  if (!modal || modal.classList.contains('hidden')) return;
+  clearTimeout(modal.closeTimer);
+  modal.classList.add('is-closing');
+  modal.closeTimer = setTimeout(() => {
+    modal.classList.add('hidden');
+    modal.classList.remove('is-closing');
+    modal.setAttribute('aria-hidden', 'true');
+  }, 200);
+}
+
 // Navigation & Tab Switching
 function switchTab(tabId) {
   currentTab = tabId;
+  document.body.classList.toggle('login-shell', tabId === 'login');
   const sections = document.querySelectorAll('main > section');
   sections.forEach(sec => sec.classList.add('hidden'));
 
@@ -366,6 +323,9 @@ function switchTab(tabId) {
   if (targetView) {
     targetView.classList.remove('hidden');
   }
+
+  const mainContent = document.querySelector('main');
+  if (mainContent) mainContent.scrollTo({ top: 0, behavior: 'smooth' });
 
   // Update active sidebar link styling
   const links = document.querySelectorAll('.sidebar-link');
@@ -403,12 +363,19 @@ function switchTab(tabId) {
     headerTitle.innerText = titles[tabId] || 'ระบบจัดการสภานักเรียน';
   }
 
-  // Close mobile sidebar
+  // Close the compact mobile navigation after selecting a destination.
   const sidebar = document.getElementById('sidebar');
   const overlay = document.getElementById('sidebar-overlay');
-  if (sidebar && !sidebar.classList.contains('-translate-x-full')) {
-    sidebar.classList.add('-translate-x-full');
-    if (overlay) overlay.classList.add('hidden');
+  if (sidebar && sidebar.classList.contains('is-menu-open')) {
+    sidebar.classList.remove('is-menu-open');
+    sidebar.setAttribute('aria-expanded', 'false');
+    const menuButton = document.getElementById('nav-menu-toggle');
+    menuButton?.setAttribute('aria-expanded', 'false');
+    menuButton?.setAttribute('aria-label', 'เปิดเมนู');
+    if (overlay) {
+      overlay.classList.add('hidden');
+      overlay.setAttribute('aria-hidden', 'true');
+    }
   }
 
   // View specific triggers
@@ -433,8 +400,17 @@ function switchTab(tabId) {
 function toggleSidebar() {
   const sidebar = document.getElementById('sidebar');
   const overlay = document.getElementById('sidebar-overlay');
-  if (sidebar) sidebar.classList.toggle('-translate-x-full');
-  if (overlay) overlay.classList.toggle('hidden');
+  if (!sidebar) return;
+  const isOpening = !sidebar.classList.contains('is-menu-open');
+  sidebar.classList.toggle('is-menu-open', isOpening);
+  sidebar.setAttribute('aria-expanded', String(isOpening));
+  const menuButton = document.getElementById('nav-menu-toggle');
+  menuButton?.setAttribute('aria-expanded', String(isOpening));
+  menuButton?.setAttribute('aria-label', isOpening ? 'ปิดเมนู' : 'เปิดเมนู');
+  if (overlay) {
+    overlay.classList.toggle('hidden', !isOpening);
+    overlay.setAttribute('aria-hidden', String(!isOpening));
+  }
 }
 
 function toggleDarkMode() {
@@ -450,10 +426,13 @@ function toggleDarkMode() {
 // Authentication Controller
 function handleAuthAction() {
   if (currentRole !== 'guest') {
-    signOutSupabase().finally(() => {
+    signOutSupabase().then(() => {
       updateUIAuth();
       showToast('ออกจากระบบเรียบร้อยแล้ว', 'info');
       switchTab('login');
+    }).catch(error => {
+      console.error('Supabase sign out failed:', error);
+      showToast('ออกจากระบบไม่สำเร็จ กรุณาลองอีกครั้ง', 'error');
     });
   } else {
     switchTab('login');
@@ -526,7 +505,31 @@ function showLoginError(message) {
   if (errorMsg) errorMsg.innerText = message;
 }
 
+let loginSubmissionActive = false;
 async function submitLogin(role) {
+  if (loginSubmissionActive) return;
+  loginSubmissionActive = true;
+  try {
+    await performLogin(role);
+  } catch (error) {
+    console.error('Login request failed:', error);
+    showLoginError('เชื่อมต่อระบบไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
+  } finally {
+    loginSubmissionActive = false;
+  }
+}
+
+async function refreshPostLoginData() {
+  try {
+    await refreshRemoteReports();
+    if (currentRole === 'admin') await refreshRemoteUsers();
+  } catch (error) {
+    console.error('Post-login data refresh failed:', error);
+    showToast('เข้าสู่ระบบแล้ว แต่โหลดข้อมูลบางส่วนไม่สำเร็จ กรุณาลองเปิดหน้านี้อีกครั้ง', 'error');
+  }
+}
+
+async function performLogin(role) {
   const errorBox = document.getElementById('login-error');
   if (errorBox) errorBox.classList.add('hidden');
 
@@ -560,7 +563,8 @@ async function submitLogin(role) {
       .eq('id', data.user.id)
       .maybeSingle();
 
-    if (profileError || !profile || profile.role !== 'student') {
+    if (profileError) throw profileError;
+    if (!profile || profile.role !== 'student') {
       await sb.auth.signOut();
       showLoginError('ไม่พบบัญชีนักเรียนในระบบ');
       return;
@@ -568,8 +572,7 @@ async function submitLogin(role) {
 
     currentUser = mapSupabaseProfile(profile);
     currentRole = 'student';
-    saveAuthHint(currentUser, currentRole);
-    await refreshRemoteReports();
+    await refreshPostLoginData();
     updateUIAuth();
     showToast(`ยินดีต้อนรับ ${currentUser.name}`, 'success');
     switchTab('student-news');
@@ -599,7 +602,8 @@ async function submitLogin(role) {
       .eq('id', data.user.id)
       .maybeSingle();
 
-    if (profileError || !profile || profile.role !== 'admin') {
+    if (profileError) throw profileError;
+    if (!profile || profile.role !== 'admin') {
       await sb.auth.signOut();
       showLoginError('บัญชีนี้ไม่มีสิทธิ์ผู้ดูแลระบบ');
       return;
@@ -607,9 +611,7 @@ async function submitLogin(role) {
 
     currentUser = mapSupabaseProfile(profile);
     currentRole = 'admin';
-    saveAuthHint(currentUser, currentRole);
-    await refreshRemoteReports();
-    await refreshRemoteUsers();
+    await refreshPostLoginData();
     updateUIAuth();
     showToast('เข้าสู่ระบบผู้ดูแลเรียบร้อย', 'success');
     switchTab('admin-dashboard');
@@ -670,9 +672,7 @@ async function submitAdminRegister() {
 
     currentUser = mapSupabaseProfile(profile);
     currentRole = 'admin';
-    saveAuthHint(currentUser, currentRole);
-    await refreshRemoteReports();
-    await refreshRemoteUsers();
+    await refreshPostLoginData();
     updateUIAuth();
     document.getElementById('form-register-admin')?.reset();
     showToast(`สร้างบัญชีผู้ดูแลสำเร็จ ยินดีต้อนรับ ${currentUser.name}`, 'success');
@@ -744,8 +744,7 @@ async function submitRegister() {
 
     currentUser = mapSupabaseProfile(profile);
     currentRole = 'student';
-    saveAuthHint(currentUser, currentRole);
-    await refreshRemoteReports();
+    await refreshPostLoginData();
     updateUIAuth();
     document.getElementById('form-register-student')?.reset();
     showToast(`สมัครสมาชิกสำเร็จ ยินดีต้อนรับ ${currentUser.name}`, 'success');
@@ -928,7 +927,7 @@ function renderPublicAchievements() {
       <div class="bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-premium border border-slate-100 dark:border-slate-700/50 flex flex-col justify-between">
         <div>
           <div class="h-44 bg-slate-100 dark:bg-slate-900 relative overflow-hidden">
-            <img src="${safeString(item?.imgUrl, 'https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?w=800')}" class="w-full h-full object-cover" alt="achievement">
+            <img src="${scEscape(safeString(item?.imgUrl).trim() || 'https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?w=800')}" class="w-full h-full object-cover" alt="achievement">
             <span class="absolute bottom-3 left-3 px-3 py-1 bg-slate-950/80 backdrop-blur-md text-yellow-400 rounded-full text-[10px] font-extrabold font-english border border-yellow-400/30">
               <i class="fa-solid fa-trophy mr-1"></i>${safeString(item?.date, 'ไม่ระบุ')}</span>
           </div>
@@ -960,7 +959,7 @@ function renderStudentNews() {
   grid.innerHTML = newsList.map(item => `
     <div onclick="openStudentNewsModal('${safeString(item?.id, 'news')}')" class="bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-premium border border-slate-100 dark:border-slate-700/50 cursor-pointer hover:-translate-y-1.5 transition-all duration-200">
       <div class="h-48 bg-slate-100 dark:bg-slate-900 relative">
-        <img src="${safeString(item?.imgUrl, 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800')}" class="w-full h-full object-cover" alt="news">
+        <img src="${scEscape(safeString(item?.imgUrl).trim() || 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800')}" class="w-full h-full object-cover" alt="news">
       </div>
       <div class="p-6">
         <span class="text-[10px] font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-wider font-english">${safeString(item?.date, 'ไม่ระบุ')}</span>
@@ -977,17 +976,17 @@ function openStudentNewsModal(id) {
   if (!item) return;
 
   const img = document.getElementById('news-modal-image');
-  if (img) img.src = safeString(item?.imgUrl, 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800');
+  if (img) img.src = safeString(item?.imgUrl).trim() || 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800';
   safeText('news-modal-date', safeString(item?.date, 'ไม่ระบุ'));
   safeText('news-modal-title', safeString(item?.headline, 'ข่าวสาร'));
   safeText('news-modal-content', safeString(item?.content, 'ไม่มีรายละเอียด'));
 
   const modal = document.getElementById('student-news-modal');
-  if (modal) modal.classList.remove('hidden');
+  if (modal) openModal('student-news-modal');
 }
 
 function closeStudentNewsModal() {
-  document.getElementById('student-news-modal').classList.add('hidden');
+  closeModal('student-news-modal');
 }
 
 // 3. STUDENT LINKS CONTROLLER
@@ -1070,8 +1069,7 @@ function renderReportDetailPhotos(photos) {
 
 async function prepareReportImage(file, reportId) {
   if (!file || !file.type.startsWith('image/')) throw new Error('รองรับเฉพาะไฟล์รูปภาพ');
-  const maxSize = 20 * 1024 * 1024;
-  if (file.size > maxSize) throw new Error(`${file.name} ใหญ่เกิน 20MB`);
+  if (file.size > MAX_SCHOOL_IMAGE_BYTES) throw new Error(`${file.name} ใหญ่เกิน 8MB`);
 
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
   const safeExt = ['jpg','jpeg','png','webp'].includes(ext) ? ext : 'jpg';
@@ -1112,8 +1110,8 @@ function handleReportImagesChange(files) {
       showToast(`${file.name} ไม่ใช่ไฟล์รูปภาพ`, 'error');
       return;
     }
-    if (file.size > 20 * 1024 * 1024) {
-      showToast(`${file.name} ใหญ่เกิน 20MB`, 'error');
+    if (file.size > MAX_SCHOOL_IMAGE_BYTES) {
+      showToast(`${file.name} ใหญ่เกิน 8MB`, 'error');
       return;
     }
 
@@ -1180,8 +1178,6 @@ async function submitProblemReport() {
     return;
   }
   const authUserId = sessionData.session.user.id;
-  const hint = getAuthHint();
-
   // Always use the Auth UUID returned by Supabase, never a stale cached/local value.
   if (currentRole !== 'student' || !currentUser || currentUser.authId !== authUserId) {
     const { data: profile, error: profileError } = await sb
@@ -1193,18 +1189,6 @@ async function submitProblemReport() {
     if (!profileError && profile && profile.role === 'student') {
       currentUser = mapSupabaseProfile(profile);
       currentRole = 'student';
-      saveAuthHint(currentUser, currentRole);
-    } else if (hint && hint.authId === authUserId && hint.role !== 'admin') {
-      currentUser = {
-        id: hint.studentId || '',
-        authId: authUserId,
-        name: hint.name || '',
-        role: 'student',
-        class: hint.classroom || '',
-        email: hint.email || sessionData.session.user.email || ''
-      };
-      currentRole = 'student';
-      saveAuthHint(currentUser, currentRole);
     } else {
       showToast('ไม่พบสิทธิ์นักเรียนของบัญชีนี้', 'error');
       return;
@@ -1355,7 +1339,7 @@ function renderStudentTrack() {
 
 // Modal Detail Viewer
 function closeReportDetailModal() {
-  document.getElementById('report-detail-modal').classList.add('hidden');
+  closeModal('report-detail-modal');
 }
 
 async function saveReportFromAdmin() {
@@ -1747,30 +1731,260 @@ async function renderStudentSongs() {
 }
 
 /* -------------------- lost & found -------------------- */
+const lostFoundCategories = [
+  { value: 'money', label: '💵 เงิน' },
+  { value: 'electronics', label: '📱 อุปกรณ์อิเล็กทรอนิกส์' },
+  { value: 'documents', label: '📄 เอกสาร/บัตร' },
+  { value: 'keys', label: '🔑 กุญแจ/กุญแจรถ' },
+  { value: 'clothing', label: '👕 เสื้อผ้า/หมวก' },
+  { value: 'accessories', label: '💍 เครื่องประดับ' },
+  { value: 'belongings', label: '🎒 ของใช้ทั่วไป' },
+  { value: 'others', label: '🧰 อื่น ๆ' }
+];
+let selectedLostFoundImage = null;
+let lostFoundImagePreviewUrl = '';
+let lostFoundSubmissionActive = false;
+
+function renderLostFoundCategories(selected = 'others') {
+  const container = document.getElementById('lf-category-options');
+  if (!container) return;
+
+  container.replaceChildren();
+  lostFoundCategories.forEach(category => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = category.label;
+    button.className = `rounded-xl border px-3 py-2 text-left text-xs font-semibold transition ${
+      selected === category.value
+        ? 'border-blue-500 bg-blue-50 text-blue-700 dark:border-yellow-400 dark:bg-blue-900/40 dark:text-yellow-300'
+        : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300'
+    }`;
+    button.addEventListener('click', () => selectLostFoundCategory(category.value));
+    container.appendChild(button);
+  });
+}
+
+function selectLostFoundCategory(category) {
+  const field = document.getElementById('lf-category');
+  if (!lostFoundCategories.some(item => item.value === category)) return;
+  if (field) field.value = category;
+  renderLostFoundCategories(category);
+}
+
+function filterLostFound(status) {
+  if (!['all', 'searching', 'returned'].includes(status)) return;
+  activeLFStatusFilter = status;
+  const selectedClass = ['border-blue-600', 'text-blue-600', 'dark:text-blue-400', 'dark:border-blue-400'];
+  const idleClass = ['border-transparent', 'text-slate-400'];
+  ['all', 'searching', 'returned'].forEach(value => {
+    const button = document.getElementById(`lf-filter-${value}`);
+    if (!button) return;
+    button.classList.remove(...selectedClass, ...idleClass);
+    button.classList.add(...(value === status ? selectedClass : idleClass));
+  });
+  renderStudentLostFound();
+}
+
+function filterLostFoundByCategory(category) {
+  if (category !== 'all' && !lostFoundCategories.some(item => item.value === category)) return;
+  activeLFCategoryFilter = category;
+  renderStudentLostFound();
+}
+
+function resetLostFoundImage() {
+  if (lostFoundImagePreviewUrl) URL.revokeObjectURL(lostFoundImagePreviewUrl);
+  selectedLostFoundImage = null;
+  lostFoundImagePreviewUrl = '';
+  const input = document.getElementById('lf-image-input');
+  const image = document.getElementById('lf-image-preview');
+  const preview = document.getElementById('lf-image-preview-container');
+  if (input) input.value = '';
+  if (image) image.removeAttribute('src');
+  preview?.classList.add('hidden');
+}
+
+function handleLostFoundImage(file) {
+  if (!file) return;
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    showToast('รองรับเฉพาะไฟล์ JPG, PNG หรือ WEBP', 'error');
+    return;
+  }
+  if (file.size > MAX_SCHOOL_IMAGE_BYTES) {
+    showToast('รูปภาพต้องมีขนาดไม่เกิน 8MB', 'error');
+    return;
+  }
+
+  resetLostFoundImage();
+  selectedLostFoundImage = file;
+  lostFoundImagePreviewUrl = URL.createObjectURL(file);
+  const image = document.getElementById('lf-image-preview');
+  if (image) image.src = lostFoundImagePreviewUrl;
+  document.getElementById('lf-image-preview-container')?.classList.remove('hidden');
+}
+
+function initLostFoundImageUploader() {
+  const input = document.getElementById('lf-image-input');
+  const area = document.getElementById('lf-drag-area');
+  if (!input || !area || area.dataset.bound === '1') return;
+  area.dataset.bound = '1';
+
+  area.addEventListener('click', event => {
+    if (event.target !== input) input.click();
+  });
+  input.addEventListener('change', () => {
+    handleLostFoundImage(input.files?.[0]);
+    input.value = '';
+  });
+  ['dragenter', 'dragover'].forEach(eventName => {
+    area.addEventListener(eventName, event => {
+      event.preventDefault();
+      event.stopPropagation();
+      area.classList.add('ring-2', 'ring-blue-500');
+    });
+  });
+  ['dragleave', 'drop'].forEach(eventName => {
+    area.addEventListener(eventName, event => {
+      event.preventDefault();
+      event.stopPropagation();
+      area.classList.remove('ring-2', 'ring-blue-500');
+    });
+  });
+  area.addEventListener('drop', event => handleLostFoundImage(event.dataTransfer?.files?.[0]));
+}
+
+function openLostFoundModal(type = 'lost') {
+  if (currentRole !== 'student' || !currentUser?.authId) {
+    showToast('กรุณาเข้าสู่ระบบนักเรียนก่อนแจ้งของหาย / เก็บของได้', 'error');
+    switchTab('login');
+    return;
+  }
+
+  const form = document.getElementById('form-lostfound-report');
+  form?.reset();
+  resetLostFoundImage();
+  const isMoney = type === 'money';
+  const typeField = document.getElementById('lf-type');
+  const moneySection = document.getElementById('lf-money-type-section');
+  const nameLabel = document.getElementById('lf-item-name-label');
+  const itemName = document.getElementById('lf-item-name');
+  if (typeField) typeField.value = isMoney ? '' : (type === 'found' ? 'found' : 'lost');
+  moneySection?.classList.toggle('hidden', !isMoney);
+  if (nameLabel) nameLabel.firstChild.textContent = isMoney ? 'จำนวนเงินหรือรายละเอียด ' : 'ชื่อสิ่งของ / รายการ ';
+  if (itemName) itemName.placeholder = isMoney ? 'เช่น จำนวนเงินโดยประมาณ / ลักษณะธนบัตร' : 'เช่น กระเป๋านักเรียน, โทรศัพท์, สมุด';
+
+  document.querySelectorAll('input[name="money-type"]').forEach(radio => { radio.checked = false; });
+  safeValue('lf-reporter-name', currentUser.name || '');
+  safeValue('lf-student-id', currentUser.id || '');
+  safeValue('lf-classroom', currentUser.class || '');
+  safeValue('lf-category', 'others');
+  renderLostFoundCategories('others');
+  openModal('student-lostfound-modal');
+}
+
+function closeLostFoundModal() {
+  closeModal('student-lostfound-modal');
+  document.getElementById('form-lostfound-report')?.reset();
+  resetLostFoundImage();
+}
+
 async function submitLostFoundReport() {
-  if (currentRole !== 'student' || !currentUser?.authId) { showToast('กรุณาเข้าสู่ระบบก่อนแจ้งของหาย/เก็บของได้', 'error'); switchTab('login'); return; }
-  const typeValue = document.getElementById('lf-type').value;
-  if (!typeValue) { showToast('กรุณาเลือกประเภทข้อมูล', 'error'); return; }
-  const payload = {
-    id: scId('LF'), user_id: currentUser.authId,
-    type: typeValue.includes('lost') ? 'lost' : 'found',
-    category: document.getElementById('lf-category').value,
-    item_name: document.getElementById('lf-item-name').value.trim(),
-    location: document.getElementById('lf-room-location').value.trim(),
-    datetime: document.getElementById('lf-datetime').value,
-    reporter_name: document.getElementById('lf-reporter-name').value.trim(),
-    student_id: document.getElementById('lf-student-id').value.trim(),
-    classroom: document.getElementById('lf-classroom').value.trim(),
-    description: document.getElementById('lf-description').value.trim(),
-    contact: document.getElementById('lf-contact').value.trim(),
-    image_url: document.getElementById('lf-image-preview')?.src?.startsWith('http') ? document.getElementById('lf-image-preview').src : '',
-    status: 'searching', resolution_date: null, notes: '', pinned: false
-  };
-  if (!payload.item_name || !payload.location || !payload.datetime || !payload.contact) { showToast('กรุณากรอกข้อมูลให้ครบ', 'error'); return; }
-  const { data, error } = await sb.from('lost_found').insert(payload).select('*').single();
-  if (error) { showToast('บันทึกของหายไม่สำเร็จ: ' + error.message, 'error'); return; }
-  db.lostFound.unshift(mapLostFound(data));
-  closeLostFoundModal(); showToast('บันทึกข้อมูลลง Supabase แล้ว', 'success'); renderStudentLostFound();
+  if (lostFoundSubmissionActive) return;
+  lostFoundSubmissionActive = true;
+  showLoadingOverlay();
+  let uploadedImagePath = '';
+
+  try {
+    if (!isSupabaseReady()) throw new Error('ยังไม่ได้ตั้งค่า Supabase');
+    const { data: sessionData, error: sessionError } = await sb.auth.getSession();
+    if (sessionError) throw sessionError;
+    const authUserId = sessionData?.session?.user?.id;
+    if (!authUserId) {
+      showToast('เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง', 'error');
+      switchTab('login');
+      return;
+    }
+
+    if (currentRole !== 'student' || currentUser?.authId !== authUserId) {
+      const { data: profile, error: profileError } = await sb
+        .from('profiles')
+        .select('id,student_id,name,role,classroom,email')
+        .eq('id', authUserId)
+        .maybeSingle();
+      if (profileError) throw profileError;
+      if (!profile || profile.role !== 'student') {
+        showToast('บัญชีนี้ไม่มีสิทธิ์นักเรียน', 'error');
+        return;
+      }
+      currentUser = mapSupabaseProfile(profile);
+      currentRole = 'student';
+      updateUIAuth();
+    }
+
+    const typeValue = document.getElementById('lf-type')?.value || '';
+    if (!['lost', 'found', 'money_lost', 'money_found'].includes(typeValue)) {
+      showToast('กรุณาเลือกประเภทเงินที่ต้องการแจ้ง', 'error');
+      return;
+    }
+    const payload = {
+      id: scId('LF'),
+      user_id: authUserId,
+      type: typeValue.endsWith('lost') ? 'lost' : 'found',
+      category: document.getElementById('lf-category').value,
+      item_name: document.getElementById('lf-item-name').value.trim(),
+      location: document.getElementById('lf-room-location').value.trim(),
+      datetime: document.getElementById('lf-datetime').value,
+      reporter_name: document.getElementById('lf-reporter-name').value.trim(),
+      student_id: document.getElementById('lf-student-id').value.trim(),
+      classroom: document.getElementById('lf-classroom').value.trim(),
+      description: document.getElementById('lf-description').value.trim(),
+      contact: document.getElementById('lf-contact').value.trim(),
+      image_url: '',
+      status: 'searching',
+      resolution_date: null,
+      notes: '',
+      pinned: false
+    };
+    if (!payload.reporter_name || !payload.student_id || !payload.classroom || !payload.item_name || !payload.location || !payload.datetime || !payload.contact) {
+      showToast('กรุณากรอกข้อมูลที่มีเครื่องหมาย * ให้ครบ', 'error');
+      return;
+    }
+
+    if (selectedLostFoundImage) {
+      const extension = selectedLostFoundImage.type === 'image/png' ? 'png' : selectedLostFoundImage.type === 'image/webp' ? 'webp' : 'jpg';
+      uploadedImagePath = `lost-found/${authUserId}/${crypto.randomUUID()}.${extension}`;
+      const { error: uploadError } = await sb.storage.from('school-images').upload(uploadedImagePath, selectedLostFoundImage, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: selectedLostFoundImage.type
+      });
+      if (uploadError) throw uploadError;
+      payload.image_url = sb.storage.from('school-images').getPublicUrl(uploadedImagePath).data.publicUrl;
+    }
+
+    const { data, error } = await sb.from('lost_found').insert(payload).select('*').single();
+    if (error) throw error;
+
+    db.lostFound = db.lostFound || [];
+    db.lostFound.unshift(mapLostFound(data));
+    uploadedImagePath = '';
+    closeLostFoundModal();
+    showToast('บันทึกข้อมูลลง Supabase แล้ว', 'success');
+    await renderStudentLostFound();
+  } catch (error) {
+    console.error('Lost and found submission failed:', error);
+    if (uploadedImagePath) {
+      try {
+        const { error: cleanupError } = await sb.storage.from('school-images').remove([uploadedImagePath]);
+        if (cleanupError) console.warn('Uploaded lost-and-found image cleanup failed:', cleanupError);
+      } catch (cleanupError) {
+        console.warn('Uploaded lost-and-found image cleanup failed:', cleanupError);
+      }
+    }
+    showToast('บันทึกข้อมูลของหายไม่สำเร็จ: ' + (error?.message || error), 'error');
+  } finally {
+    lostFoundSubmissionActive = false;
+    hideLoadingOverlay();
+  }
 }
 
 async function renderStudentLostFound() {
@@ -1780,7 +1994,8 @@ async function renderStudentLostFound() {
   const query = (document.getElementById('lf-search')?.value || '').toLowerCase();
   if (query) items = items.filter(i => `${i.itemName} ${i.description} ${i.reporterName}`.toLowerCase().includes(query));
   if (activeLFCategoryFilter !== 'all') items = items.filter(i => i.category === activeLFCategoryFilter);
-  if (activeLFStatusFilter !== 'all') items = items.filter(i => i.status === activeLFStatusFilter);
+  if (activeLFStatusFilter === 'searching') items = items.filter(i => i.status === 'searching' || i.status === 'found_matching');
+  else if (activeLFStatusFilter !== 'all') items = items.filter(i => i.status === activeLFStatusFilter);
   const lostList = items.filter(i => i.type === 'lost'); const foundList = items.filter(i => i.type === 'found');
   const lc = document.getElementById('lost-count'); if (lc) lc.innerText = lostList.length;
   const fc = document.getElementById('found-count'); if (fc) fc.innerText = foundList.length;
@@ -1903,9 +2118,9 @@ function openNewsModal(id = '') {
   const item = (db.news || []).find(x => x.id === id);
   if (item) { safeValue('news-editor-headline', item.headline); safeValue('news-editor-date', item.date); safeValue('news-editor-content', item.content); safeValue('news-editor-img-url', item.imgUrl); }
   else safeValue('news-editor-date', new Date().toISOString().slice(0,10));
-  document.getElementById('admin-news-modal')?.classList.remove('hidden');
+  openModal('admin-news-modal');
 }
-function closeNewsModal(){ document.getElementById('admin-news-modal')?.classList.add('hidden'); }
+function closeNewsModal(){ closeModal('admin-news-modal'); }
 
 async function saveNewsItem() {
   if (!(await requireAdmin())) return;
@@ -1918,29 +2133,29 @@ async function saveNewsItem() {
 async function deleteNewsItem(id){ if(!(await requireAdmin()))return; if(!confirm('ลบข่าวนี้หรือไม่?'))return; const {error}=await sb.from('news').delete().eq('id',id); if(error){showToast('ลบข่าวไม่สำเร็จ: '+error.message,'error');return;} await refreshAllRemoteData(); renderAdminNews(); renderStudentNews(); showToast('ลบข่าวแล้ว','success'); }
 function renderAdminNews(){ const tbody=document.getElementById('admin-news-table-body'); if(!tbody)return; tbody.innerHTML=(db.news||[]).map(n=>`<tr><td class="p-4"><img src="${scEscape(n.imgUrl||'https://placehold.co/120x70')}" class="w-24 h-14 object-cover rounded-xl"></td><td class="p-4 font-bold">${scEscape(n.headline)}</td><td class="p-4">${scEscape(n.date)}</td><td class="p-4 max-w-sm truncate">${scEscape(n.content)}</td><td class="p-4 text-right"><button onclick="openNewsModal('${n.id}')" class="px-3 py-1.5 bg-blue-600 text-white rounded-lg mr-2">แก้ไข</button><button onclick="deleteNewsItem('${n.id}')" class="px-3 py-1.5 bg-rose-600 text-white rounded-lg">ลบ</button></td></tr>`).join('') || '<tr><td colspan="5" class="p-10 text-center text-slate-400">ยังไม่มีข่าว</td></tr>'; }
 
-function openLinkModal(id=''){ document.getElementById('form-link-editor')?.reset(); document.getElementById('link-editor-id').value=id||''; const item=(db.links||[]).find(x=>x.id===id); if(item){safeValue('link-editor-category',item.category);safeValue('link-editor-name',item.name);safeValue('link-editor-url',item.url);} document.getElementById('admin-link-modal')?.classList.remove('hidden'); }
-function closeLinkModal(){document.getElementById('admin-link-modal')?.classList.add('hidden');}
+function openLinkModal(id=''){ document.getElementById('form-link-editor')?.reset(); document.getElementById('link-editor-id').value=id||''; const item=(db.links||[]).find(x=>x.id===id); if(item){safeValue('link-editor-category',item.category);safeValue('link-editor-name',item.name);safeValue('link-editor-url',item.url);} openModal('admin-link-modal'); }
+function closeLinkModal(){closeModal('admin-link-modal');}
 async function saveLinkItem(){if(!(await requireAdmin()))return;const id=document.getElementById('link-editor-id').value||scId('LINK');const payload={id,category:document.getElementById('link-editor-category').value,name:document.getElementById('link-editor-name').value.trim(),url:document.getElementById('link-editor-url').value.trim()};const result=document.getElementById('link-editor-id').value?await sb.from('links').update(payload).eq('id',id).select('*').single():await sb.from('links').insert(payload).select('*').single();if(result.error){showToast('บันทึกลิงก์ไม่สำเร็จ: '+result.error.message,'error');return;}await refreshAllRemoteData();closeLinkModal();renderAdminLinks();renderStudentLinks();showToast('บันทึกลิงก์แล้ว','success');}
 async function deleteLinkItem(id){if(!(await requireAdmin()))return;if(!confirm('ลบลิงก์นี้หรือไม่?'))return;const {error}=await sb.from('links').delete().eq('id',id);if(error){showToast('ลบลิงก์ไม่สำเร็จ: '+error.message,'error');return;}await refreshAllRemoteData();renderAdminLinks();renderStudentLinks();showToast('ลบลิงก์แล้ว','success');}
 function renderAdminLinks(){const tbody=document.getElementById('admin-links-table-body');if(!tbody)return;tbody.innerHTML=(db.links||[]).map(l=>`<tr><td class="p-4">${scEscape(l.category)}</td><td class="p-4 font-bold">${scEscape(l.name)}</td><td class="p-4"><a href="${scEscape(l.url)}" target="_blank" rel="noopener" class="text-blue-600 underline break-all">${scEscape(l.url)}</a></td><td class="p-4 text-right"><button onclick="openLinkModal('${l.id}')" class="px-3 py-1.5 bg-blue-600 text-white rounded-lg mr-2">แก้ไข</button><button onclick="deleteLinkItem('${l.id}')" class="px-3 py-1.5 bg-rose-600 text-white rounded-lg">ลบ</button></td></tr>`).join('')||'<tr><td colspan="4" class="p-10 text-center text-slate-400">ยังไม่มีลิงก์</td></tr>';}
 
-function openAchievementModal(id=''){document.getElementById('form-achievement-editor')?.reset();document.getElementById('achievement-editor-id').value=id||'';const item=(db.achievements||[]).find(x=>x.id===id);if(item){safeValue('achievement-editor-headline',item.headline);safeValue('achievement-editor-date',item.date);safeValue('achievement-editor-responsible',item.responsible);safeValue('achievement-editor-content',item.content);safeValue('achievement-editor-img-url',item.imgUrl);}else safeValue('achievement-editor-date',new Date().toISOString().slice(0,10));document.getElementById('admin-achievement-modal')?.classList.remove('hidden');}
-function closeAchievementModal(){document.getElementById('admin-achievement-modal')?.classList.add('hidden');}
+function openAchievementModal(id=''){document.getElementById('form-achievement-editor')?.reset();document.getElementById('achievement-editor-id').value=id||'';const item=(db.achievements||[]).find(x=>x.id===id);if(item){safeValue('achievement-editor-headline',item.headline);safeValue('achievement-editor-date',item.date);safeValue('achievement-editor-responsible',item.responsible);safeValue('achievement-editor-content',item.content);safeValue('achievement-editor-img-url',item.imgUrl);}else safeValue('achievement-editor-date',new Date().toISOString().slice(0,10));openModal('admin-achievement-modal');}
+function closeAchievementModal(){closeModal('admin-achievement-modal');}
 async function saveAchievementItem(){if(!(await requireAdmin()))return;const id=document.getElementById('achievement-editor-id').value||scId('ACH');const payload={id,headline:document.getElementById('achievement-editor-headline').value.trim(),date:document.getElementById('achievement-editor-date').value,responsible:document.getElementById('achievement-editor-responsible').value.trim(),content:document.getElementById('achievement-editor-content').value.trim(),img_url:document.getElementById('achievement-editor-img-url').value.trim()};const result=document.getElementById('achievement-editor-id').value?await sb.from('achievements').update(payload).eq('id',id).select('*').single():await sb.from('achievements').insert(payload).select('*').single();if(result.error){showToast('บันทึกผลงานไม่สำเร็จ: '+result.error.message,'error');return;}await refreshAllRemoteData();closeAchievementModal();renderAdminAchievements();renderPublicAchievements();showToast('บันทึกผลงานแล้ว','success');}
 async function deleteAchievementItem(id){if(!(await requireAdmin()))return;if(!confirm('ลบผลงานนี้หรือไม่?'))return;const {error}=await sb.from('achievements').delete().eq('id',id);if(error){showToast('ลบผลงานไม่สำเร็จ: '+error.message,'error');return;}await refreshAllRemoteData();renderAdminAchievements();renderPublicAchievements();showToast('ลบผลงานแล้ว','success');}
 function renderAdminAchievements(){const tbody=document.getElementById('admin-achievements-table-body');if(!tbody)return;tbody.innerHTML=(db.achievements||[]).map(a=>`<tr><td class="p-4"><img src="${scEscape(a.imgUrl||'https://placehold.co/120x70')}" class="w-24 h-14 object-cover rounded-xl"></td><td class="p-4 font-bold">${scEscape(a.headline)}</td><td class="p-4">${scEscape(a.responsible)}</td><td class="p-4">${scEscape(a.date)}</td><td class="p-4 text-right"><button onclick="openAchievementModal('${a.id}')" class="px-3 py-1.5 bg-blue-600 text-white rounded-lg mr-2">แก้ไข</button><button onclick="deleteAchievementItem('${a.id}')" class="px-3 py-1.5 bg-rose-600 text-white rounded-lg">ลบ</button></td></tr>`).join('')||'<tr><td colspan="5" class="p-10 text-center text-slate-400">ยังไม่มีผลงาน</td></tr>';}
 
 /* -------------------- admin songs -------------------- */
 async function renderAdminSongs(){if(!(await requireAdmin()))return;try{await refreshRemoteSongs();}catch(e){console.error(e);}let songs=[...(db.songs||[])];const status=document.getElementById('admin-song-filter-status')?.value||'all';const q=(document.getElementById('admin-song-search')?.value||'').toLowerCase();if(status!=='all')songs=songs.filter(s=>s.status===status);if(q)songs=songs.filter(s=>`${s.title} ${s.artist} ${s.requesterName}`.toLowerCase().includes(q));const tbody=document.getElementById('admin-songs-table-body');if(!tbody)return;tbody.innerHTML=songs.map(s=>`<tr><td class="p-4"><b>${scEscape(s.title)}</b><br><span class="text-slate-400">${scEscape(s.artist)}</span></td><td class="p-4">${scEscape(s.requesterName)}<br><span class="text-slate-400">${scEscape(s.date)}</span></td><td class="p-4 max-w-xs">${scEscape(s.message||'-')}</td><td class="p-4"><span class="px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-700">${scEscape(s.status)}</span></td><td class="p-4 text-right"><button onclick="openAdminSongModal('${s.id}')" class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg">จัดการ</button></td></tr>`).join('')||'<tr><td colspan="5" class="p-10 text-center text-slate-400">ไม่พบคำขอเพลง</td></tr>';}
-function openAdminSongModal(id){const s=(db.songs||[]).find(x=>x.id===id);if(!s)return;safeValue('admin-song-id',s.id);safeText('admin-song-lbl-title',s.title);safeText('admin-song-lbl-artist',s.artist);safeValue('admin-song-status',s.status);safeValue('admin-song-feedback',s.feedback||'');document.getElementById('admin-song-modal')?.classList.remove('hidden');}
-function closeAdminSongModal(){document.getElementById('admin-song-modal')?.classList.add('hidden');}
+function openAdminSongModal(id){const s=(db.songs||[]).find(x=>x.id===id);if(!s)return;safeValue('admin-song-id',s.id);safeText('admin-song-lbl-title',s.title);safeText('admin-song-lbl-artist',s.artist);safeValue('admin-song-status',s.status);safeValue('admin-song-feedback',s.feedback||'');openModal('admin-song-modal');}
+function closeAdminSongModal(){closeModal('admin-song-modal');}
 async function saveSongStatus(){if(!(await requireAdmin()))return;const id=document.getElementById('admin-song-id').value;const status=document.getElementById('admin-song-status').value;const feedback=document.getElementById('admin-song-feedback').value.trim();const {data,error}=await sb.from('songs').update({status,feedback,updated_at:new Date().toISOString()}).eq('id',id).select('*').single();if(error){showToast('บันทึกคิวเพลงไม่สำเร็จ: '+error.message,'error');return;}const i=db.songs.findIndex(x=>x.id===id);if(i>=0)db.songs[i]=mapSong(data);closeAdminSongModal();renderAdminSongs();showToast('อัปเดตสถานะเพลงแล้ว','success');}
 async function clearPlayedSongs(){if(!(await requireAdmin()))return;if(!confirm('ล้างเพลงที่เปิดแล้วทั้งหมดหรือไม่?'))return;const {error}=await sb.from('songs').delete().eq('status','played');if(error){showToast('ล้างเพลงไม่สำเร็จ: '+error.message,'error');return;}await refreshRemoteSongs();renderAdminSongs();showToast('ล้างเพลงที่เปิดแล้วแล้ว','success');}
 
 /* -------------------- admin lost & found -------------------- */
 async function renderAdminLostFound(){if(!(await requireAdmin()))return;try{await refreshRemoteLostFound();}catch(e){console.error(e);}let items=[...(db.lostFound||[])];const status=document.getElementById('admin-lf-filter-status')?.value||'all';const type=document.getElementById('admin-lf-filter-type')?.value||'all';const cat=document.getElementById('admin-lf-filter-category')?.value||'all';const q=(document.getElementById('admin-lf-search')?.value||'').toLowerCase();if(status!=='all')items=items.filter(x=>x.status===status);if(type!=='all')items=items.filter(x=>x.type===type);if(cat!=='all')items=items.filter(x=>x.category===cat);if(q)items=items.filter(x=>`${x.itemName} ${x.reporterName} ${x.location}`.toLowerCase().includes(q));const tbody=document.getElementById('admin-lf-table-body');if(!tbody)return;tbody.innerHTML=items.map(i=>`<tr><td class="p-4">${i.imageUrl?`<img src="${scEscape(i.imageUrl)}" class="w-16 h-12 object-cover rounded-lg">`:'-'}</td><td class="p-4">${i.type==='lost'?'ของหาย':'เก็บได้'}</td><td class="p-4">${scEscape(i.category)}</td><td class="p-4 font-bold">${scEscape(i.itemName)}</td><td class="p-4">${scEscape(i.classroom)}<br><span class="text-slate-400">${scEscape(i.location)}</span></td><td class="p-4">${scEscape(i.reporterName)}<br><span class="text-slate-400">${scEscape(i.datetime)}</span></td><td class="p-4">${scEscape(i.status)}</td><td class="p-4">${i.pinned?'📌':'-'}</td><td class="p-4 text-right"><button onclick="openAdminLostFoundModal('${i.id}')" class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg">จัดการ</button></td></tr>`).join('')||'<tr><td colspan="9" class="p-10 text-center text-slate-400">ไม่พบรายการ</td></tr>';}
-function openAdminLostFoundModal(id){const i=(db.lostFound||[]).find(x=>x.id===id);if(!i)return;safeValue('admin-lf-id',i.id);safeText('admin-lf-lbl-type',i.type==='lost'?'ของหาย':'เก็บได้');safeText('admin-lf-lbl-name',i.itemName);safeText('admin-lf-lbl-location',i.location);safeText('admin-lf-lbl-category',i.category);safeText('admin-lf-lbl-datetime',i.datetime);safeText('admin-lf-lbl-reporter',`${i.reporterName} (${i.studentId})`);safeText('admin-lf-lbl-desc',i.description||'-');safeText('admin-lf-lbl-contact',i.contact);safeValue('admin-lf-status',i.status);safeValue('admin-lf-resdate',i.resolutionDate||'');safeValue('admin-lf-notes',i.notes||'');const pin=document.getElementById('admin-lf-pinned');if(pin)pin.checked=!!i.pinned;const img=document.getElementById('admin-lf-img');const box=document.getElementById('admin-lf-img-container');if(img&&box){if(i.imageUrl){img.src=i.imageUrl;box.classList.remove('hidden');}else{box.classList.add('hidden');}}document.getElementById('admin-lostfound-modal')?.classList.remove('hidden');}
-function closeAdminLostFoundModal(){document.getElementById('admin-lostfound-modal')?.classList.add('hidden');}
+function openAdminLostFoundModal(id){const i=(db.lostFound||[]).find(x=>x.id===id);if(!i)return;safeValue('admin-lf-id',i.id);safeText('admin-lf-lbl-type',i.type==='lost'?'ของหาย':'เก็บได้');safeText('admin-lf-lbl-name',i.itemName);safeText('admin-lf-lbl-location',i.location);safeText('admin-lf-lbl-category',i.category);safeText('admin-lf-lbl-datetime',i.datetime);safeText('admin-lf-lbl-reporter',`${i.reporterName} (${i.studentId})`);safeText('admin-lf-lbl-desc',i.description||'-');safeText('admin-lf-lbl-contact',i.contact);safeValue('admin-lf-status',i.status);safeValue('admin-lf-resdate',i.resolutionDate||'');safeValue('admin-lf-notes',i.notes||'');const pin=document.getElementById('admin-lf-pinned');if(pin)pin.checked=!!i.pinned;const img=document.getElementById('admin-lf-img');const box=document.getElementById('admin-lf-img-container');if(img&&box){if(i.imageUrl){img.src=i.imageUrl;box.classList.remove('hidden');}else{box.classList.add('hidden');}}openModal('admin-lostfound-modal');}
+function closeAdminLostFoundModal(){closeModal('admin-lostfound-modal');}
 async function saveAdminLostFoundStatus(){if(!(await requireAdmin()))return;const id=document.getElementById('admin-lf-id').value;const payload={status:document.getElementById('admin-lf-status').value,resolution_date:document.getElementById('admin-lf-resdate').value||null,notes:document.getElementById('admin-lf-notes').value.trim(),pinned:document.getElementById('admin-lf-pinned').checked,updated_at:new Date().toISOString()};const {data,error}=await sb.from('lost_found').update(payload).eq('id',id).select('*').single();if(error){showToast('บันทึกของหายไม่สำเร็จ: '+error.message,'error');return;}const idx=db.lostFound.findIndex(x=>x.id===id);if(idx>=0)db.lostFound[idx]=mapLostFound(data);closeAdminLostFoundModal();renderAdminLostFound();renderStudentLostFound();showToast('อัปเดตของหายแล้ว','success');}
 
 /* -------------------- admin dashboard -------------------- */
@@ -1962,7 +2177,7 @@ const renderAdminChatDebounced = debounce(() => {
 }, 180);
 
 /* -------------------- admin report save/open using remote state -------------------- */
-function openReportDetailModal(id){const r=(db.reports||[]).find(item=>item.id===id);if(!r)return;safeText('report-detail-title',r.title);safeText('report-detail-classroom',r.classroom);safeText('report-detail-category',r.category);safeText('report-detail-location',r.location);safeText('report-detail-datetime',(r.datetime||'').replace('T',' '));safeText('report-detail-desc',r.description||'-');safeText('report-detail-resdate',r.resolutionDate||'-');safeText('report-detail-notes',r.notes||'- ไม่มีข้อมูลบันทึกเพิ่มเติม -');renderReportDetailPhotos(r.photos);const badge=document.getElementById('report-detail-badge');if(badge){badge.innerText=(r.status||'').toUpperCase();badge.className=`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase ${r.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : r.status === 'processing' ? 'bg-amber-100 text-amber-700' : r.status === 'failed' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-700'}`;}const adminSec=document.getElementById('admin-actions-section');const saveBtn=document.getElementById('admin-save-report-btn');if(currentRole==='admin'){adminSec?.classList.remove('hidden');saveBtn?.classList.remove('hidden');safeValue('admin-action-status',r.status);safeValue('admin-action-resdate',r.resolutionDate||'');safeValue('admin-action-notes',r.notes||'');saveBtn?.setAttribute('data-id',r.id);}else{adminSec?.classList.add('hidden');saveBtn?.classList.add('hidden');}document.getElementById('report-detail-modal')?.classList.remove('hidden');}
+function openReportDetailModal(id){const r=(db.reports||[]).find(item=>item.id===id);if(!r)return;safeText('report-detail-title',r.title);safeText('report-detail-classroom',r.classroom);safeText('report-detail-category',r.category);safeText('report-detail-location',r.location);safeText('report-detail-datetime',(r.datetime||'').replace('T',' '));safeText('report-detail-desc',r.description||'-');safeText('report-detail-resdate',r.resolutionDate||'-');safeText('report-detail-notes',r.notes||'- ไม่มีข้อมูลบันทึกเพิ่มเติม -');renderReportDetailPhotos(r.photos);const badge=document.getElementById('report-detail-badge');if(badge){badge.innerText=(r.status||'').toUpperCase();badge.className=`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase ${r.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : r.status === 'processing' ? 'bg-amber-100 text-amber-700' : r.status === 'failed' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-700'}`;}const adminSec=document.getElementById('admin-actions-section');const saveBtn=document.getElementById('admin-save-report-btn');if(currentRole==='admin'){adminSec?.classList.remove('hidden');saveBtn?.classList.remove('hidden');safeValue('admin-action-status',r.status);safeValue('admin-action-resdate',r.resolutionDate||'');safeValue('admin-action-notes',r.notes||'');saveBtn?.setAttribute('data-id',r.id);}else{adminSec?.classList.add('hidden');saveBtn?.classList.add('hidden');}openModal('report-detail-modal');}
 
 /* -------------------- init + realtime -------------------- */
 let scRealtimeChannel = null;
@@ -1996,19 +2211,22 @@ async function initApp(){
   try{
     db=getRemoteDBShell();
 
-    const persistedHint = hydrateCurrentUserFromHint();
     const restored = await restoreSupabaseSession();
-
-    await refreshAllRemoteData();
     updateUIAuth();
 
-    if (restored || persistedHint || (currentRole !== 'guest' && currentUser)) {
+    if (restored && currentRole !== 'guest' && currentUser) {
       switchTab(currentRole === 'admin' ? 'admin-dashboard' : 'student-news');
     } else {
       switchTab('login');
     }
 
-    await setupSupabaseRealtime();
+    const initialTab = currentTab;
+    refreshAllRemoteData().then(loaded => {
+      if (loaded && currentTab === initialTab && currentTab !== 'login') {
+        switchTab(currentTab);
+      }
+    }).catch(error => console.error('Initial data refresh failed:', error));
+    setupSupabaseRealtime().catch(error => console.error('Realtime setup failed:', error));
   }catch(e){console.error('App init failed:',e);updateUIAuth();switchTab('login');showToast('เริ่มระบบไม่สำเร็จ: '+(e.message||e),'error');}
   finally{window.setTimeout(hideLoadingOverlay,400);}
 }
@@ -2044,8 +2262,7 @@ function removeChatAttachment(role, index) {
 }
 
 
-// Keep the authenticated state alive across reloads. Only an explicit SIGNED_OUT
-// event clears the UI/session hint; token refreshes and page reloads do not.
+// The Supabase session is authoritative; cached profile hints never grant access.
 if (isSupabaseReady()) {
   sb.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT') {
@@ -2054,19 +2271,6 @@ if (isSupabaseReady()) {
       currentRole = 'guest';
       updateUIAuth();
       if (document.readyState !== 'loading') switchTab('login');
-      return;
-    }
-
-    if (session?.user && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED')) {
-      const hint = getAuthHint();
-      const hydrated = hydrateCurrentUserFromSession(session, hint) || hydrateCurrentUserFromHint();
-      if (hydrated) {
-        updateUIAuth();
-        if (document.readyState !== 'loading' && currentRole !== 'guest') {
-          const targetTab = currentRole === 'admin' ? 'admin-dashboard' : 'student-news';
-          if (currentTab === 'login' || currentTab === 'public-achievements') switchTab(targetTab);
-        }
-      }
     }
   });
 }
@@ -2074,8 +2278,9 @@ if (isSupabaseReady()) {
 // The original project did not invoke initApp(), which left every view hidden.
 // Start the app deterministically after the DOM is ready.
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => { initReportImageUploader(); initApp(); }, { once: true });
+  document.addEventListener('DOMContentLoaded', () => { initReportImageUploader(); initLostFoundImageUploader(); initApp(); }, { once: true });
 } else {
   initReportImageUploader();
+  initLostFoundImageUploader();
   initApp();
 }
