@@ -5982,3 +5982,65 @@ a.absolute {
   line-height: 1;
   box-shadow: 0 4px 10px -4px rgba(0, 0, 0, .5) !important;
 }
+
+
+/* ==========================================================================
+   ข้อความ "ยินดีต้อนรับสู่ SCLRP" บนหน้าเปิดเว็บและหน้าโหลด
+   ========================================================================== */
+#hx-intro .hx-name.hx-welcome {
+  font-family: 'Kanit', 'Plus Jakarta Sans', sans-serif;
+  font-size: clamp(1.45rem, 5.5vw, 2.3rem);
+  font-weight: 700;
+  letter-spacing: .01em;
+  line-height: 1.3;
+  animation-name: hxWipeWelcome;
+}
+
+#hx-intro .hx-welcome em,
+.loading-welcome em {
+  font-family: 'Plus Jakarta Sans', 'Kanit', sans-serif;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: .08em;
+  background: linear-gradient(90deg, #f7d96d, #f1c644 50%, #7fa6de);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+#hx-intro .hx-sub {
+  font-size: clamp(.7rem, 2.6vw, .85rem);
+}
+
+@keyframes hxWipeWelcome {
+  from { opacity: 0; clip-path: inset(0 100% 0 0); transform: translateY(6px); }
+  to { opacity: 1; clip-path: inset(0 0 0 0); transform: none; }
+}
+
+.loading-welcome {
+  color: #10254d;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.loading-welcome em {
+  background: linear-gradient(90deg, #2456a6, #3475ce 55%, #d6a916);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.dark .loading-welcome { color: #f0f5ff; }
+.dark .loading-welcome em {
+  background: linear-gradient(90deg, #f7d96d, #f1c644 50%, #7fa6de);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.loading-sub {
+  margin-top: .2rem;
+  color: #68778e;
+  font-size: .75rem;
+}
+
+.dark .loading-sub { color: #9cabc0; }

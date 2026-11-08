@@ -2953,9 +2953,8 @@ if (document.readyState === 'loading') {
           <svg viewBox="0 0 150 150" aria-hidden="true"><circle cx="75" cy="75" r="70" transform="rotate(-90 75 75)"></circle></svg>
           ${logoSrc ? `<img src="${logoSrc}" alt="">` : ''}
         </div>
-        <div class="hx-name">LRP STUDENT COUNCIL</div>
+        <div class="hx-name hx-welcome">ยินดีต้อนรับสู่ <em>SCLRP</em></div>
         <div class="hx-line"></div>
-        <div class="hx-sub">สภานักเรียน · เสียงของคุณเปลี่ยนโรงเรียนได้</div>
       </div>`);
     body.appendChild(intro);
 

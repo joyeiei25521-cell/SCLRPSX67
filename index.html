@@ -22,7 +22,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <!-- Custom Styles -->
-  <link rel="stylesheet" href="styles.css?v=20261108-STABLE-1">
+  <link rel="stylesheet" href="styles.css?v=20261108-WELCOME-1">
 
   <script>
     tailwind.config = {
@@ -1692,10 +1692,10 @@
   <div id="loading-overlay" class="fixed inset-0 bg-slate-950/70 z-[999] flex items-center justify-center p-4 hidden modal-backdrop" aria-hidden="true">
     <div role="status" class="loading-skeleton-card bg-white/95 dark:bg-slate-800/95 p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-slate-700 shadow-2xl backdrop-blur-xl">
       <div class="flex items-center gap-3 mb-6">
-        <div class="skeleton-block h-11 w-11 rounded-2xl"></div>
-        <div class="flex-1 space-y-2">
-          <div class="skeleton-block h-3 w-28 rounded-full"></div>
-          <div class="skeleton-block h-2.5 w-40 max-w-full rounded-full"></div>
+        <img src="logo.png" alt="" class="h-12 w-12 object-contain shrink-0">
+        <div class="flex-1 min-w-0">
+          <p class="loading-welcome">ยินดีต้อนรับสู่ <em>SCLRP</em></p>
+          <p class="loading-sub">กำลังโหลด กรุณารอสักครู่...</p>
         </div>
       </div>
       <div class="space-y-3">
@@ -1703,7 +1703,7 @@
         <div class="skeleton-block h-3 w-5/6 rounded-full"></div>
         <div class="skeleton-block h-3 w-2/3 rounded-full"></div>
       </div>
-      <span class="sr-only">กำลังโหลด กรุณารอสักครู่</span>
+      <span class="sr-only">ยินดีต้อนรับสู่ SCLRP กำลังโหลด กรุณารอสักครู่</span>
     </div>
   </div>
 
@@ -1716,6 +1716,6 @@
 <script src="data.js?v=20260804-1"></script>
 
 <!-- Main -->
-<script src="app.js?v=20261108-MOBILEFIX-1"></script>
+<script src="app.js?v=20261108-WELCOME-2"></script>
 </body>
 </html>
