@@ -2450,6 +2450,9 @@ if (document.readyState === 'loading') {
         el._scRaf = requestAnimationFrame(step);
       } else {
         write(finalText);
+        el.classList.remove('hx-count-pop');
+        void el.offsetWidth;
+        el.classList.add('hx-count-pop');
       }
     };
     el._scRaf = requestAnimationFrame(step);
@@ -2672,4 +2675,658 @@ if (document.readyState === 'loading') {
       });
     }
   }
+})();
+
+
+/**
+ * SCLRP Hyper Motion — intro, ม่านเปลี่ยนหน้า, อนุภาคพื้นหลัง, แสงตามเมาส์,
+ * การ์ดเอียง 3 มิติ, ปุ่มแม่เหล็ก, ประกายเวลาคลิก, พลุกระดาษเมื่อทำสำเร็จ
+ * ทั้งหมดปิดเองเมื่อผู้ใช้ตั้งค่า "ลดการเคลื่อนไหว"
+ */
+(() => {
+  'use strict';
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  const body = document.body;
+  const logoSrc = document.querySelector('#sidebar-brand-toggle img, .login-brand-mark img')?.src || '';
+  const GOLD = '#f1c644';
+  const COLORS = ['#f1c644', '#f7d96d', '#ffffff', '#3475ce', '#2456a6', '#d6a916'];
+  const isDarkScene = () => body.classList.contains('login-shell') || document.documentElement.classList.contains('dark');
+
+  function el(tag, attrs = {}, html = '') {
+    const node = document.createElement(tag);
+    Object.entries(attrs).forEach(([k, v]) => node.setAttribute(k, v));
+    if (html) node.innerHTML = html;
+    return node;
+  }
+
+  /* ---------- 1. พื้นหลังอนุภาคเชื่อมเส้น ---------- */
+  const bg = el('canvas', { id: 'hx-bg', 'aria-hidden': 'true' });
+  body.prepend(bg);
+  const bctx = bg.getContext('2d');
+  const pointer = { x: -9999, y: -9999, active: false };
+  let dots = [];
+  let dpr = 1;
+
+  function resizeBg() {
+    dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    bg.width = innerWidth * dpr;
+    bg.height = innerHeight * dpr;
+    const count = Math.round(Math.min(finePointer ? 80 : 38, (innerWidth * innerHeight) / 16000));
+    dots = Array.from({ length: count }, () => ({
+      x: Math.random() * innerWidth,
+      y: Math.random() * innerHeight,
+      vx: (Math.random() - .5) * .35,
+      vy: (Math.random() - .5) * .35,
+      r: Math.random() * 1.6 + .8,
+      gold: Math.random() < .35
+    }));
+  }
+
+  function drawBg() {
+    if (document.hidden) { requestAnimationFrame(drawBg); return; }
+    const dark = isDarkScene();
+    bctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    bctx.clearRect(0, 0, innerWidth, innerHeight);
+    const linkDist = 130;
+
+    for (const d of dots) {
+      d.x += d.vx; d.y += d.vy;
+      if (d.x < -10) d.x = innerWidth + 10; else if (d.x > innerWidth + 10) d.x = -10;
+      if (d.y < -10) d.y = innerHeight + 10; else if (d.y > innerHeight + 10) d.y = -10;
+      if (pointer.active) {
+        const dx = pointer.x - d.x, dy = pointer.y - d.y, dist = Math.hypot(dx, dy);
+        if (dist < 180 && dist > 1) { d.x -= (dx / dist) * .6; d.y -= (dy / dist) * .6; }
+      }
+    }
+
+    for (let i = 0; i < dots.length; i++) {
+      const a = dots[i];
+      for (let j = i + 1; j < dots.length; j++) {
+        const b = dots[j];
+        const dist = Math.hypot(a.x - b.x, a.y - b.y);
+        if (dist < linkDist) {
+          const alpha = (1 - dist / linkDist) * (dark ? .28 : .16);
+          bctx.strokeStyle = dark ? `rgba(170,193,226,${alpha})` : `rgba(36,86,166,${alpha})`;
+          bctx.lineWidth = 1;
+          bctx.beginPath(); bctx.moveTo(a.x, a.y); bctx.lineTo(b.x, b.y); bctx.stroke();
+        }
+      }
+      if (pointer.active) {
+        const dist = Math.hypot(a.x - pointer.x, a.y - pointer.y);
+        if (dist < 200) {
+          bctx.strokeStyle = `rgba(241,198,68,${(1 - dist / 200) * (dark ? .55 : .4)})`;
+          bctx.beginPath(); bctx.moveTo(a.x, a.y); bctx.lineTo(pointer.x, pointer.y); bctx.stroke();
+        }
+      }
+      bctx.fillStyle = a.gold ? `rgba(241,198,68,${dark ? .8 : .55})` : (dark ? 'rgba(220,232,250,.55)' : 'rgba(36,86,166,.35)');
+      bctx.beginPath(); bctx.arc(a.x, a.y, a.r, 0, Math.PI * 2); bctx.fill();
+    }
+    requestAnimationFrame(drawBg);
+  }
+
+  resizeBg();
+  addEventListener('resize', resizeBg, { passive: true });
+  requestAnimationFrame(drawBg);
+
+  /* ---------- 2. แสงตามเมาส์ ---------- */
+  const glow = el('div', { id: 'hx-glow', 'aria-hidden': 'true' });
+  body.prepend(glow);
+  let gx = innerWidth / 2, gy = innerHeight / 2;
+  if (finePointer) {
+    (function followGlow() {
+      gx += (pointer.x - gx) * .12;
+      gy += (pointer.y - gy) * .12;
+      glow.style.transform = `translate3d(${gx}px, ${gy}px, 0)`;
+      requestAnimationFrame(followGlow);
+    })();
+  }
+
+  addEventListener('pointermove', e => {
+    pointer.x = e.clientX; pointer.y = e.clientY; pointer.active = true;
+    if (finePointer) glow.classList.add('is-on');
+  }, { passive: true });
+  document.addEventListener('pointerleave', () => { pointer.active = false; glow.classList.remove('is-on'); });
+
+  /* ---------- 3. เลเยอร์เอฟเฟกต์: ประกาย + พลุกระดาษ ---------- */
+  const fx = el('canvas', { id: 'hx-fx', 'aria-hidden': 'true' });
+  body.appendChild(fx);
+  const fctx = fx.getContext('2d');
+  let parts = [];
+  let fxRunning = false;
+
+  function resizeFx() { fx.width = innerWidth * dpr; fx.height = innerHeight * dpr; }
+  resizeFx();
+  addEventListener('resize', resizeFx, { passive: true });
+
+  function runFx() {
+    fxRunning = true;
+    fctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    fctx.clearRect(0, 0, innerWidth, innerHeight);
+    parts = parts.filter(p => p.life > 0);
+    for (const p of parts) {
+      p.life--;
+      p.vy += p.g; p.vx *= p.drag; p.vy *= p.drag;
+      p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+      const alpha = Math.min(1, p.life / 25);
+      fctx.save();
+      fctx.globalAlpha = alpha;
+      fctx.translate(p.x, p.y);
+      if (p.kind === 'spark') {
+        fctx.strokeStyle = p.color; fctx.lineWidth = 2; fctx.lineCap = 'round';
+        fctx.beginPath(); fctx.moveTo(0, 0); fctx.lineTo(-p.vx * 3, -p.vy * 3); fctx.stroke();
+      } else {
+        fctx.rotate(p.rot);
+        fctx.scale(1, Math.cos(p.rot * 2));
+        fctx.fillStyle = p.color;
+        fctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      }
+      fctx.restore();
+    }
+    if (parts.length) requestAnimationFrame(runFx);
+    else { fctx.clearRect(0, 0, innerWidth, innerHeight); fxRunning = false; }
+  }
+
+  function startFx() { if (!fxRunning) requestAnimationFrame(runFx); }
+
+  function sparks(x, y, n = 12) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, s = Math.random() * 4 + 2;
+      parts.push({ kind: 'spark', x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, g: .05, drag: .9, life: 26 + Math.random() * 10, rot: 0, vr: 0, color: Math.random() < .7 ? GOLD : '#ffffff' });
+    }
+    startFx();
+  }
+
+  function cannon(x, y, angle, n) {
+    for (let i = 0; i < n; i++) {
+      const a = angle + (Math.random() - .5) * .9, s = Math.random() * 11 + 8;
+      parts.push({ kind: 'confetti', x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, g: .28, drag: .975, life: 110 + Math.random() * 50, rot: Math.random() * 6, vr: (Math.random() - .5) * .35, w: Math.random() * 7 + 5, h: Math.random() * 5 + 3, color: COLORS[(Math.random() * COLORS.length) | 0] });
+    }
+    startFx();
+  }
+
+  function celebrate() {
+    cannon(-10, innerHeight + 10, -Math.PI / 3, 80);
+    cannon(innerWidth + 10, innerHeight + 10, -Math.PI * 2 / 3, 80);
+    setTimeout(() => cannon(innerWidth / 2, innerHeight * .35, -Math.PI / 2, 50), 180);
+  }
+  window.sclrpCelebrate = celebrate;
+
+  let lastDown = { x: innerWidth / 2, y: innerHeight / 2, t: 0 };
+  document.addEventListener('pointerdown', e => {
+    lastDown = { x: e.clientX, y: e.clientY, t: performance.now() };
+    const interactive = e.target.closest?.('button, a, .sidebar-link, label[for], .sc-lift');
+    sparks(e.clientX, e.clientY, interactive ? 14 : 6);
+  }, { passive: true });
+
+  const toastHost = document.getElementById('app-toast');
+  if (toastHost) {
+    new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => {
+      if (n.nodeType === 1 && n.classList.contains('bg-emerald-600')) celebrate();
+    }))).observe(toastHost, { childList: true });
+  }
+
+  /* ---------- 4. Intro ตอนเปิดเว็บ ---------- */
+  let introSeen = false;
+  try { introSeen = sessionStorage.getItem('sclrp_intro') === '1'; sessionStorage.setItem('sclrp_intro', '1'); } catch (e) {}
+
+  if (!introSeen) {
+    const intro = el('div', { id: 'hx-intro', role: 'presentation', title: 'คลิกเพื่อข้าม' }, `
+      <div class="hx-half top"></div><div class="hx-half bottom"></div>
+      <div class="hx-core">
+        <div class="hx-emblem">
+          <svg viewBox="0 0 150 150" aria-hidden="true"><circle cx="75" cy="75" r="70" transform="rotate(-90 75 75)"></circle></svg>
+          ${logoSrc ? `<img src="${logoSrc}" alt="">` : ''}
+        </div>
+        <div class="hx-name">LRP STUDENT COUNCIL</div>
+        <div class="hx-line"></div>
+        <div class="hx-sub">สภานักเรียน · เสียงของคุณเปลี่ยนโรงเรียนได้</div>
+      </div>`);
+    body.appendChild(intro);
+
+    let left = false;
+    const leave = () => {
+      if (left) return;
+      left = true;
+      intro.classList.add('is-leaving');
+      const cx = innerWidth / 2, cy = innerHeight / 2;
+      setTimeout(() => { sparks(cx, cy, 40); cannon(cx, cy, -Math.PI / 2, 60); }, 200);
+      setTimeout(replayCurrentView, 260);
+      setTimeout(() => intro.remove(), 1100);
+    };
+    intro.addEventListener('click', leave);
+    setTimeout(leave, 1900);
+  }
+
+  function replayCurrentView() {
+    try {
+      if (typeof currentTab === 'undefined') return;
+      if (currentTab === 'login') {
+        const view = document.getElementById('view-login');
+        if (view) { view.classList.add('hidden'); void view.offsetWidth; view.classList.remove('hidden'); }
+      } else if (typeof window.switchTab === 'function') {
+        window.switchTab(currentTab);
+      }
+    } catch (e) { console.error(e); }
+  }
+
+  /* ---------- 5. ม่านเปลี่ยนหน้าเวลาคลิกเมนู ---------- */
+  const curtain = el('div', { id: 'hx-curtain', 'aria-hidden': 'true' }, `<i></i><i>${logoSrc ? `<img src="${logoSrc}" alt="">` : ''}</i>`);
+  body.appendChild(curtain);
+
+  function runCurtain() {
+    curtain.classList.remove('run');
+    void curtain.offsetWidth;
+    curtain.classList.add('run');
+    clearTimeout(curtain._t);
+    curtain._t = setTimeout(() => curtain.classList.remove('run'), 820);
+  }
+
+  const innerSwitch = window.switchTab;
+  if (typeof innerSwitch === 'function') {
+    let pendingArgs = null, timer = null, busyUntil = 0;
+    window.switchTab = function (tabId) {
+      const ev = window.event;
+      const fromClick = ev && ev.type === 'click';
+      const same = typeof currentTab !== 'undefined' && tabId === currentTab;
+      if (!fromClick || same) return innerSwitch.apply(this, arguments);
+
+      pendingArgs = arguments;
+      if (timer) return;
+      if (performance.now() < busyUntil) return innerSwitch.apply(this, arguments);
+
+      runCurtain();
+      busyUntil = performance.now() + 760;
+      timer = setTimeout(() => {
+        timer = null;
+        innerSwitch.apply(window, pendingArgs);
+        window.dispatchEvent(new Event('hx:switched'));
+      }, 310);
+    };
+  }
+
+  /* ---------- 6. โผล่ขึ้นตอนเลื่อนมาเห็น ---------- */
+  const main = document.querySelector('main');
+  const io = 'IntersectionObserver' in window ? new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const t = entry.target;
+      io.unobserve(t);
+      t.classList.remove('hx-pending');
+      t.classList.add('hx-in');
+      const done = e => { if (e.target === t) { t.classList.remove('hx-in'); t.removeEventListener('animationend', done); } };
+      t.addEventListener('animationend', done);
+    });
+  }, { root: main, rootMargin: '0px 0px -8% 0px', threshold: .08 }) : null;
+
+  function scanReveal() {
+    if (!io || !main || body.classList.contains('login-shell')) return;
+    const limit = main.getBoundingClientRect().bottom;
+    main.querySelectorAll(':scope > section:not(.hidden) > * :is(.shadow-premium, .public-report-card, .sc-lift)').forEach(node => {
+      if (node._hxSeen) return;
+      node._hxSeen = true;
+      if (node.getBoundingClientRect().top > limit - 10) {
+        node.classList.add('hx-pending');
+        io.observe(node);
+      }
+    });
+  }
+
+  let scanTimer = null;
+  const queueScan = () => { clearTimeout(scanTimer); scanTimer = setTimeout(scanReveal, 140); };
+  if (main) new MutationObserver(queueScan).observe(main, { childList: true, subtree: true });
+  addEventListener('hx:switched', queueScan);
+  setInterval(() => { if (!document.hidden) queueScan(); }, 3000);
+  setTimeout(() => document.querySelectorAll('.hx-pending').forEach(n => {
+    const r = n.getBoundingClientRect();
+    if (r.top < innerHeight) { n.classList.remove('hx-pending'); n.classList.add('hx-in'); }
+  }), 5000);
+
+  /* ---------- 7. การ์ดเอียง 3 มิติ + ปุ่มแม่เหล็ก ---------- */
+  if (finePointer) {
+    document.addEventListener('pointermove', e => {
+      const card = e.target.closest?.('.sc-lift');
+      if (card) {
+        const r = card.getBoundingClientRect();
+        const px = (e.clientX - r.left) / r.width - .5;
+        const py = (e.clientY - r.top) / r.height - .5;
+        card.style.setProperty('--rx', `${(-py * 9).toFixed(2)}deg`);
+        card.style.setProperty('--ry', `${(px * 11).toFixed(2)}deg`);
+        card.classList.add('hx-tilting');
+      }
+
+      const btn = e.target.closest?.('button');
+      if (btn && !btn.closest('table, #demo-bar, #sidebar nav, #topnav .tn-center, #topnav .tn-sheet, .tn-burger') && !btn.disabled) {
+        const r = btn.getBoundingClientRect();
+        const dx = (e.clientX - (r.left + r.width / 2)) / r.width;
+        const dy = (e.clientY - (r.top + r.height / 2)) / r.height;
+        btn.style.translate = `${(dx * 10).toFixed(1)}px ${(dy * 8).toFixed(1)}px`;
+        btn._hxMag = true;
+      }
+    }, { passive: true });
+
+    document.addEventListener('pointerout', e => {
+      const card = e.target.closest?.('.sc-lift');
+      if (card && !card.contains(e.relatedTarget)) {
+        card.classList.remove('hx-tilting');
+        card.style.removeProperty('--rx');
+        card.style.removeProperty('--ry');
+      }
+      const btn = e.target.closest?.('button');
+      if (btn && btn._hxMag && !btn.contains(e.relatedTarget)) {
+        btn.style.translate = '';
+        btn._hxMag = false;
+      }
+    }, { passive: true });
+
+    /* หน้า Login: ภาพเคลื่อนตามเมาส์ */
+    const showcase = document.querySelector('.login-showcase');
+    if (showcase) {
+      document.addEventListener('pointermove', e => {
+        if (!body.classList.contains('login-shell')) return;
+        showcase.style.setProperty('--px', ((e.clientX / innerWidth) - .5).toFixed(3));
+        showcase.style.setProperty('--py', ((e.clientY / innerHeight) - .5).toFixed(3));
+      }, { passive: true });
+    }
+  }
+
+  /* ---------- 8. popup เด้งออกจากจุดที่กด ---------- */
+  document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+    const panel = backdrop.querySelector('.modal-panel');
+    if (!panel) return;
+    new MutationObserver(() => {
+      if (backdrop.classList.contains('hidden') || backdrop.classList.contains('is-closing')) return;
+      const recent = performance.now() - lastDown.t < 800;
+      panel.style.transformOrigin = recent
+        ? `${lastDown.x - panel.offsetLeft}px ${lastDown.y - panel.offsetTop}px`
+        : 'center';
+    }).observe(backdrop, { attributes: true, attributeFilter: ['class'] });
+  });
+})();
+
+
+/**
+ * SCLRP Top Navigation — สร้างเมนูตามสิทธิ์ผู้ใช้, แสงเลื่อนตามเมาส์, เมนูย่อย, เมนูมือถือ
+ */
+(() => {
+  'use strict';
+  const nav = document.getElementById('topnav');
+  if (!nav) return;
+
+  const body = document.body;
+  const center = nav.querySelector('.tn-center');
+  const right = nav.querySelector('.tn-right');
+  const sheet = nav.querySelector('.tn-sheet-inner');
+  const scrim = document.getElementById('tn-scrim');
+  const main = document.querySelector('main');
+
+  const NAV = {
+    guest: [
+      { tab: 'public-achievements', label: 'หน้าหลัก', icon: 'fa-house', desc: 'สรุปผลงานและการแก้ไขปัญหา' }
+    ],
+    student: [
+      { tab: 'public-achievements', label: 'หน้าหลัก', icon: 'fa-house', desc: 'สรุปผลงานและการแก้ไขปัญหา' },
+      { label: 'ข่าวสาร', items: [
+        { tab: 'student-news', label: 'ข่าวสารและประกาศ', icon: 'fa-bullhorn', desc: 'ประกาศล่าสุดจากสภานักเรียน' },
+        { tab: 'student-links', label: 'ศูนย์รวมลิงก์สำคัญ', icon: 'fa-link', desc: 'แบบสำรวจ ลงทะเบียน เว็บโรงเรียน' }
+      ] },
+      { label: 'แจ้งปัญหา', items: [
+        { tab: 'student-report', label: 'แจ้งปัญหาใหม่', icon: 'fa-circle-exclamation', desc: 'ส่งเรื่องพร้อมรูปถึงทีมสภาฯ' },
+        { tab: 'student-track', label: 'ติดตามสถานะ', icon: 'fa-clock-rotate-left', desc: 'ดูความคืบหน้าเรื่องที่คุณแจ้ง' }
+      ] },
+      { label: 'บริการ', items: [
+        { tab: 'student-songs', label: 'ขอเพลง', icon: 'fa-music', desc: 'ส่งเพลงให้เปิดช่วงพักเที่ยง' },
+        { tab: 'student-lostfound', label: 'ของหายได้คืน', icon: 'fa-box-open', desc: 'แจ้งของหายหรือของที่เก็บได้' }
+      ] },
+      { tab: 'student-chat', label: 'แชท', icon: 'fa-comments', desc: 'คุยกับแอดมินโดยตรง' }
+    ],
+    admin: [
+      { tab: 'admin-dashboard', label: 'Dashboard', icon: 'fa-chart-pie', desc: 'ภาพรวมทั้งระบบ' },
+      { tab: 'admin-reports', label: 'เรื่องร้องเรียน', icon: 'fa-list-check', desc: 'จัดการปัญหาที่แจ้งเข้ามา' },
+      { label: 'เนื้อหา', items: [
+        { tab: 'admin-news', label: 'ข่าวสาร', icon: 'fa-bullhorn', desc: 'เพิ่ม แก้ไข ลบประกาศ' },
+        { tab: 'admin-links', label: 'ลิงก์สำคัญ', icon: 'fa-link', desc: 'จัดการลิงก์ที่นักเรียนเห็น' },
+        { tab: 'admin-achievements', label: 'ผลงานสภาฯ', icon: 'fa-trophy', desc: 'บันทึกโครงการที่ทำเสร็จ' },
+        { tab: 'public-achievements', label: 'หน้าสาธารณะ', icon: 'fa-globe', desc: 'ดูหน้าที่ทุกคนเห็น' }
+      ] },
+      { label: 'บริการ', items: [
+        { tab: 'admin-songs', label: 'คิวขอเพลง', icon: 'fa-radio', desc: 'อนุมัติและจัดลำดับเพลง' },
+        { tab: 'admin-lostfound', label: 'ของหายได้คืน', icon: 'fa-boxes-stacked', desc: 'อัปเดตสถานะและปักหมุด' }
+      ] },
+      { tab: 'admin-chat', label: 'แชท', icon: 'fa-comments', desc: 'ตอบข้อความนักเรียน' }
+    ]
+  };
+
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const role = () => (typeof currentRole !== 'undefined' && NAV[currentRole]) ? currentRole : 'guest';
+  const user = () => (typeof currentUser !== 'undefined' ? currentUser : null);
+  const tabNow = () => (typeof currentTab !== 'undefined' ? currentTab : 'public-achievements');
+  const isDark = () => document.documentElement.classList.contains('dark');
+
+  const subLink = (s, i = 0) => `<a class="tn-sub" role="menuitem" href="#${s.tab}" data-tab="${s.tab}" style="--i:${i}"><span class="tn-ic"><i class="fa-solid ${s.icon}"></i></span><span><strong>${esc(s.label)}</strong><small>${esc(s.desc)}</small></span></a>`;
+
+  function userChip() {
+    const u = user();
+    if (!u) return '';
+    const sub = role() === 'admin' ? 'ผู้ดูแลระบบ' : `นักเรียน · ${u.class || '-'}`;
+    const initial = (u.name || '?').trim().charAt(0);
+    return `<div class="tn-user"><span class="tn-avatar">${esc(initial)}</span><span><strong>${esc(u.name || 'ผู้ใช้')}</strong><small>${esc(sub)}</small></span></div>`;
+  }
+
+  const themeIcon = () => `<i class="fa-solid ${isDark() ? 'fa-sun' : 'fa-moon'}"></i>`;
+
+  function render() {
+    const r = role();
+    const entries = NAV[r];
+
+    center.innerHTML = '<span class="tn-indicator" aria-hidden="true"></span>' + entries.map(e => e.items
+      ? `<div class="tn-dd"><button type="button" class="tn-item no-ripple" aria-haspopup="true" aria-expanded="false">${esc(e.label)}<i class="fa-solid fa-chevron-down tn-chev"></i></button><div class="tn-panel" role="menu">${e.items.map(s => subLink(s)).join('')}</div></div>`
+      : `<a class="tn-item" href="#${e.tab}" data-tab="${e.tab}">${esc(e.label)}</a>`).join('');
+
+    const loggedIn = r !== 'guest';
+    right.innerHTML = `
+      <button type="button" class="tn-icon tn-theme" data-act="theme" aria-label="สลับโหมดสว่าง/มืด">${themeIcon()}</button>
+      ${loggedIn
+        ? `${userChip()}<button type="button" class="tn-icon tn-logout" data-act="logout" aria-label="ออกจากระบบ" title="ออกจากระบบ"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>`
+        : `<button type="button" class="tn-ghost" data-act="register">สมัครสมาชิก</button><button type="button" class="tn-cta" data-act="login">เข้าสู่ระบบ</button>`}
+      <button type="button" class="tn-burger no-ripple" data-act="menu" aria-label="เปิดเมนู" aria-expanded="false" aria-controls="tn-sheet"><span></span><span></span></button>`;
+
+    const singles = entries.filter(e => !e.items);
+    const groups = entries.filter(e => e.items);
+    let i = 0;
+    sheet.innerHTML = [
+      loggedIn ? userChip().replace('class="tn-user"', `class="tn-user" style="--i:${i++}"`) : '',
+      `<div class="tn-sheet-label" style="--i:${i++}">เมนูหลัก</div>`,
+      singles.map(s => subLink(s, i++)).join(''),
+      groups.map(g => `<div class="tn-sheet-label" style="--i:${i++}">${esc(g.label)}</div>${g.items.map(s => subLink(s, i++)).join('')}`).join(''),
+      `<div class="tn-sheet-actions" style="--i:${i++}">
+        <button type="button" class="tn-ghost" data-act="theme">${themeIcon()}<span>${isDark() ? 'โหมดสว่าง' : 'โหมดมืด'}</span></button>
+        ${loggedIn
+          ? '<button type="button" class="tn-ghost" data-act="logout"><i class="fa-solid fa-arrow-right-from-bracket"></i><span>ออกจากระบบ</span></button>'
+          : '<button type="button" class="tn-cta" data-act="login">เข้าสู่ระบบ</button>'}
+      </div>`
+    ].join('');
+
+    nav.dataset.role = r;
+    syncActive(tabNow(), true);
+  }
+
+  /* ---------- แสงเลื่อนตามเมนู ---------- */
+  function visibleActive() {
+    return center.querySelector(':scope > .tn-item.is-active, :scope > .tn-dd > .tn-item.is-active');
+  }
+
+  function moveIndicator(target, instant = false) {
+    const ind = center.querySelector('.tn-indicator');
+    if (!ind) return;
+    if (!target || !target.getClientRects().length) { ind.style.opacity = '0'; return; }
+    if (instant) center.classList.add('tn-noanim');
+    const c = center.getBoundingClientRect();
+    const t = target.getBoundingClientRect();
+    ind.style.width = `${t.width}px`;
+    ind.style.transform = `translateX(${t.left - c.left}px)`;
+    ind.style.opacity = '1';
+    if (instant) requestAnimationFrame(() => requestAnimationFrame(() => center.classList.remove('tn-noanim')));
+  }
+
+  function syncActive(tab, instant = false) {
+    nav.querySelectorAll('[data-tab]').forEach(a => {
+      const on = a.dataset.tab === tab;
+      a.classList.toggle('is-active', on);
+      if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
+    center.querySelectorAll('.tn-dd').forEach(dd => {
+      dd.querySelector('.tn-item').classList.toggle('is-active', !!dd.querySelector(`.tn-sub[data-tab="${tab}"]`));
+    });
+    requestAnimationFrame(() => moveIndicator(visibleActive(), instant));
+  }
+
+  center.addEventListener('pointerover', e => {
+    const item = e.target.closest('.tn-item');
+    if (item && center.contains(item)) moveIndicator(item);
+  });
+  center.addEventListener('pointerleave', () => {
+    if (!center.querySelector('.tn-dd.is-open')) moveIndicator(visibleActive());
+  });
+
+  /* ---------- เมนูย่อย ---------- */
+  let closeTimer = null;
+  function openDd(dd) {
+    clearTimeout(closeTimer);
+    center.querySelectorAll('.tn-dd.is-open').forEach(o => { if (o !== dd) closeDd(o); });
+    dd.classList.add('is-open');
+    dd.querySelector('.tn-item').setAttribute('aria-expanded', 'true');
+    moveIndicator(dd.querySelector('.tn-item'));
+  }
+  function closeDd(dd) {
+    dd.classList.remove('is-open');
+    dd.querySelector('.tn-item')?.setAttribute('aria-expanded', 'false');
+  }
+  function closeAllDd() {
+    center.querySelectorAll('.tn-dd.is-open').forEach(closeDd);
+    moveIndicator(visibleActive());
+  }
+
+  center.addEventListener('pointerover', e => {
+    const dd = e.target.closest('.tn-dd');
+    if (dd && e.pointerType === 'mouse') openDd(dd);
+  });
+  center.addEventListener('pointerout', e => {
+    const dd = e.target.closest('.tn-dd');
+    if (!dd || e.pointerType !== 'mouse' || dd.contains(e.relatedTarget)) return;
+    clearTimeout(closeTimer);
+    closeTimer = setTimeout(() => { closeDd(dd); if (!center.matches(':hover')) moveIndicator(visibleActive()); }, 160);
+  });
+  center.addEventListener('click', e => {
+    const trigger = e.target.closest('.tn-dd > .tn-item');
+    if (!trigger) return;
+    const dd = trigger.parentElement;
+    if (dd.classList.contains('is-open') && e.pointerType !== 'mouse') closeDd(dd);
+    else openDd(dd);
+  });
+  center.addEventListener('focusin', e => {
+    const dd = e.target.closest('.tn-dd');
+    if (dd) openDd(dd);
+  });
+  center.addEventListener('focusout', e => {
+    const dd = e.target.closest('.tn-dd');
+    if (dd && !dd.contains(e.relatedTarget)) closeDd(dd);
+  });
+
+  /* ---------- เมนูมือถือ ---------- */
+  function setSheet(open) {
+    nav.classList.toggle('is-open', open);
+    const burger = nav.querySelector('.tn-burger');
+    burger?.setAttribute('aria-expanded', String(open));
+    burger?.setAttribute('aria-label', open ? 'ปิดเมนู' : 'เปิดเมนู');
+    if (!scrim) return;
+    clearTimeout(scrim._t);
+    if (open) {
+      scrim.hidden = false;
+      requestAnimationFrame(() => scrim.classList.add('is-on'));
+    } else {
+      scrim.classList.remove('is-on');
+      scrim._t = setTimeout(() => { scrim.hidden = true; }, 450);
+    }
+  }
+  scrim?.addEventListener('click', () => setSheet(false));
+
+  /* ---------- คลิกในแถบเมนู ---------- */
+  nav.addEventListener('click', e => {
+    const link = e.target.closest('[data-tab]');
+    if (link) {
+      e.preventDefault();
+      closeAllDd();
+      setSheet(false);
+      if (typeof window.switchTab === 'function') window.switchTab(link.dataset.tab);
+      return;
+    }
+    const act = e.target.closest('[data-act]')?.dataset.act;
+    if (!act) return;
+    if (act === 'menu') setSheet(!nav.classList.contains('is-open'));
+    if (act === 'theme' && typeof window.toggleDarkMode === 'function') window.toggleDarkMode();
+    if (act === 'logout' || act === 'login') { setSheet(false); if (typeof window.handleAuthAction === 'function') window.handleAuthAction(); }
+    if (act === 'register') {
+      setSheet(false);
+      window.switchTab?.('login');
+      setTimeout(() => { window.setLoginRole?.('student'); window.toggleLoginRegister?.('register'); }, 360);
+    }
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    closeAllDd();
+    setSheet(false);
+  });
+  document.addEventListener('pointerdown', e => {
+    if (!nav.contains(e.target)) closeAllDd();
+  });
+
+  /* ---------- ย่อแถบเมื่อเลื่อนหน้า ---------- */
+  main?.addEventListener('scroll', () => nav.classList.toggle('is-scrolled', main.scrollTop > 12), { passive: true });
+
+  let resizeTimer = null;
+  addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (innerWidth > 1100) setSheet(false);
+      moveIndicator(visibleActive(), true);
+    }, 120);
+  }, { passive: true });
+
+  /* ---------- ผูกกับระบบเดิม ---------- */
+  const prevSwitch = window.switchTab;
+  if (typeof prevSwitch === 'function') {
+    window.switchTab = function (tabId) {
+      syncActive(tabId);
+      return prevSwitch.apply(this, arguments);
+    };
+  }
+
+  const prevAuth = window.updateUIAuth;
+  if (typeof prevAuth === 'function') {
+    window.updateUIAuth = function () {
+      const result = prevAuth.apply(this, arguments);
+      render();
+      return result;
+    };
+  }
+
+  const prevTheme = window.toggleDarkMode;
+  if (typeof prevTheme === 'function') {
+    window.toggleDarkMode = function () {
+      const result = prevTheme.apply(this, arguments);
+      nav.querySelectorAll('[data-act="theme"]').forEach(btn => {
+        const icon = btn.querySelector('i');
+        if (icon) icon.className = `fa-solid ${isDark() ? 'fa-sun' : 'fa-moon'}`;
+        const label = btn.querySelector('span');
+        if (label) label.textContent = isDark() ? 'โหมดสว่าง' : 'โหมดมืด';
+      });
+      return result;
+    };
+  }
+
+  render();
+  document.fonts?.ready?.then(() => moveIndicator(visibleActive(), true));
 })();

@@ -22,7 +22,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <!-- Custom Styles -->
-  <link rel="stylesheet" href="styles.css?v=20261108-UI-2">
+  <link rel="stylesheet" href="styles.css?v=20261108-NAV-1">
 
   <script>
     tailwind.config = {
@@ -189,6 +189,19 @@
 
   <!-- Mobile Sidebar Backdrop Overlay -->
   <div id="sidebar-overlay" aria-hidden="true" onclick="toggleSidebar()" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 hidden md:hidden"></div>
+  <!-- Top navigation -->
+  <nav id="topnav" aria-label="เมนูหลัก">
+    <div class="tn-bar">
+      <a class="tn-brand" href="#public-achievements" data-tab="public-achievements" aria-label="SCLRP หน้าหลัก">
+        <img src="logo.png" alt="">
+        <span><strong>SC<em>LRP</em></strong><small>STUDENT COUNCIL</small></span>
+      </a>
+      <div class="tn-center" role="menubar"></div>
+      <div class="tn-right"></div>
+    </div>
+    <div class="tn-sheet" id="tn-sheet"><div><div class="tn-sheet-inner"></div></div></div>
+  </nav>
+  <div id="tn-scrim" hidden aria-hidden="true"></div>
 
   <!-- Main Content Wrapper -->
   <div class="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
@@ -1703,6 +1716,6 @@
 <script src="data.js?v=20260804-1"></script>
 
 <!-- Main -->
-<script src="app.js?v=20261108-UI-2"></script>
+<script src="app.js?v=20261108-NAV-1"></script>
 </body>
 </html>
