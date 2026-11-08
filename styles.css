@@ -5769,3 +5769,216 @@ body:not(.login-shell) > .flex-1.flex.flex-col.min-w-0.h-full {
 @keyframes tnSheen { 0%, 100% { background-position: 0% 0; } 50% { background-position: 100% 0; } }
 @keyframes tnDrop { from { opacity: 0; translate: 0 -30px; } to { opacity: 1; translate: 0 0; } }
 @keyframes tnSubIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+
+/* ==========================================================================
+   SCLRP Polish — ความนิ่งและความลื่นของหน้าเว็บ (โหลดเป็นชั้นสุดท้าย)
+   ========================================================================== */
+
+/* กันหน้ากระตุก/เลื่อนแนวนอน และกันเนื้อหาขยับเมื่อแถบเลื่อนโผล่ */
+html,
+body {
+  overflow-x: clip;
+}
+
+body {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+main {
+  scrollbar-gutter: stable;
+  overflow-anchor: auto;
+}
+
+/* เลิก transition: all ทั่วทั้งเว็บ (ต้นเหตุอาการหน่วง/สะดุด) ให้ขยับเฉพาะสิ่งที่ควรขยับ */
+button,
+a {
+  transition-property: color, background-color, border-color, box-shadow, opacity, transform, translate, filter;
+  transition-duration: .25s;
+  transition-timing-function: cubic-bezier(.22, 1, .36, 1);
+}
+
+/* รูปทั่วไปไม่ต้องขยายเองตอนชี้ (เหลือเฉพาะในการ์ดที่ตั้งใจให้ขยาย) */
+img:hover {
+  transform: none;
+}
+
+/* ช่องกรอกไม่กระโดดตอนกด */
+body:not(.login-shell) main input:focus,
+body:not(.login-shell) main select:focus,
+body:not(.login-shell) main textarea:focus,
+body:not(.login-shell) .modal-panel :is(input, select, textarea):focus {
+  transform: none !important;
+}
+
+/* ---------- หัวข้อหน้า: โปร่ง สะอาด เข้ากับแถบเมนู ---------- */
+html body:not(.login-shell) div > header,
+html.dark body:not(.login-shell) div > header {
+  position: relative !important;
+  top: auto;
+  width: 100%;
+  max-width: 1480px;
+  min-height: 0 !important;
+  margin: 0 auto;
+  padding: 1.1rem clamp(1rem, 2.2vw, 2rem) .2rem !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+html body:not(.login-shell) div > header h1 {
+  color: var(--ui-ink) !important;
+  font-size: clamp(1.3rem, 2.4vw, 1.75rem) !important;
+  font-weight: 800 !important;
+  line-height: 1.25;
+  letter-spacing: -.03em;
+  text-wrap: balance;
+}
+
+#page-header-title::before {
+  content: attr(data-eyebrow);
+  display: block;
+  margin-bottom: .3rem;
+  color: var(--ui-gold-ink);
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+}
+
+html body:not(.login-shell) main {
+  padding-top: 1rem !important;
+}
+
+/* ---------- โครงร่างระหว่างโหลด ---------- */
+html:not(.sc-data-ready) :is(#student-news-grid, #pub-achievements-grid, #student-links-container):empty::before,
+:is(#student-track-list, #student-songs-list, #lost-items-list, #found-items-list, #admin-chat-session-list, #student-chat-list):empty::before {
+  content: '';
+  display: block;
+  grid-column: 1 / -1;
+  height: 132px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--ui-r-lg);
+  background: linear-gradient(100deg, var(--ui-surface-2) 20%, var(--ui-surface) 40%, var(--ui-surface-2) 60%);
+  background-size: 220% 100%;
+  animation: skeletonShimmer 1.3s ease-in-out infinite;
+}
+
+/* ---------- ข้อความเมื่อไม่มีข้อมูล ---------- */
+.sc-empty {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-direction: column;
+  align-items: center;
+  gap: .35rem;
+  padding: 2.5rem 1rem;
+  border: 1px dashed var(--ui-line);
+  border-radius: var(--ui-r-lg);
+  background: var(--ui-surface);
+  color: var(--ui-muted);
+  text-align: center;
+}
+
+.sc-empty i {
+  margin-bottom: .25rem;
+  color: var(--ui-blue);
+  font-size: 1.8rem;
+  opacity: .75;
+}
+
+.sc-empty strong {
+  color: var(--ui-ink);
+  font-size: .9rem;
+}
+
+.sc-empty span {
+  font-size: .75rem;
+}
+
+body:not(.login-shell) main .sc-empty.sc-lift.sc-lift:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* ---------- ปุ่มระหว่างกำลังบันทึก ---------- */
+button.sc-busy {
+  cursor: progress !important;
+  opacity: .78;
+}
+
+button.sc-busy::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, .42) 50%, transparent 80%);
+  background-size: 200% 100%;
+  animation: scBusySweep 1s linear infinite;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+@keyframes scBusySweep {
+  from { background-position: 150% 0; }
+  to { background-position: -50% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button.sc-busy::after { animation: none; }
+}
+
+/* ---------- ปุ่มที่วางลอย (absolute) ต้องอยู่ตำแหน่งเดิม ----------
+   กฎเก่า button:not(.no-lift){position:relative} ไปทับคลาส .absolute ของ Tailwind
+   ทำให้ปุ่มปิดข่าวและปุ่มลบรูปหลุดจากมุม */
+button.absolute,
+a.absolute {
+  position: absolute !important;
+}
+
+/* ปุ่มปิดบนภาพปกข่าว */
+#student-news-modal .modal-panel > div:first-child {
+  position: relative;
+  overflow: hidden;
+}
+
+#student-news-modal .modal-panel button.absolute {
+  top: 1rem !important;
+  right: 1rem !important;
+  z-index: 3;
+  width: 40px !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  border: 1px solid rgba(255, 255, 255, .28) !important;
+  background: rgba(8, 17, 32, .55) !important;
+  color: #fff !important;
+  box-shadow: 0 8px 20px -8px rgba(0, 0, 0, .5) !important;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+#student-news-modal .modal-panel button.absolute:hover {
+  border-color: rgba(241, 198, 68, .7) !important;
+  background: rgba(8, 17, 32, .75) !important;
+  color: #f7d96d !important;
+  transform: rotate(90deg) !important;
+}
+
+/* ปุ่มลบรูปตัวอย่าง (แจ้งปัญหา / แชท) */
+:is(#image-previews, #student-chat-attachments, #admin-chat-attachments) button.absolute {
+  top: .3rem !important;
+  right: .3rem !important;
+  display: grid;
+  width: 24px !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  place-items: center;
+  padding: 0 !important;
+  border-radius: 999px !important;
+  font-size: .8rem;
+  line-height: 1;
+  box-shadow: 0 4px 10px -4px rgba(0, 0, 0, .5) !important;
+}

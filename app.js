@@ -821,7 +821,7 @@ function updateUIAuth() {
 // 1. PUBLIC ACHIEVEMENTS CONTROLLER
 function renderPublicAchievements() {
   db = loadDB();
-  const reports = Array.isArray(db.reports) ? db.reports : [];
+  const reports = Array.isArray(db.publicReports) ? db.publicReports : (Array.isArray(db.reports) ? db.reports : []);
 
   const total = reports.length;
   const completed = reports.filter(r => r?.status === 'completed').length;
@@ -929,12 +929,12 @@ function renderPublicAchievements() {
           <div class="h-44 bg-slate-100 dark:bg-slate-900 relative overflow-hidden">
             <img src="${scEscape(safeString(item?.imgUrl).trim() || 'https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?w=800')}" class="w-full h-full object-cover" alt="achievement">
             <span class="absolute bottom-3 left-3 px-3 py-1 bg-slate-950/80 backdrop-blur-md text-yellow-400 rounded-full text-[10px] font-extrabold font-english border border-yellow-400/30">
-              <i class="fa-solid fa-trophy mr-1"></i>${safeString(item?.date, 'ไม่ระบุ')}</span>
+              <i class="fa-solid fa-trophy mr-1"></i>${scEscape(safeString(item?.date, 'ไม่ระบุ'))}</span>
           </div>
           <div class="p-6">
-            <h4 class="font-extrabold text-base text-slate-900 dark:text-white leading-snug">${safeString(item?.headline, 'หัวข้อผลงาน')}</h4>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 font-medium">โดย: ${safeString(item?.responsible, 'ไม่ระบุ')}</p>
-            <p class="text-xs text-slate-600 dark:text-slate-300 mt-3 leading-relaxed">${safeString(item?.content, 'ไม่มีรายละเอียด')}</p>
+            <h4 class="font-extrabold text-base text-slate-900 dark:text-white leading-snug">${scEscape(safeString(item?.headline, 'หัวข้อผลงาน'))}</h4>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 font-medium">โดย: ${scEscape(safeString(item?.responsible, 'ไม่ระบุ'))}</p>
+            <p class="text-xs text-slate-600 dark:text-slate-300 mt-3 leading-relaxed">${scEscape(safeString(item?.content, 'ไม่มีรายละเอียด'))}</p>
           </div>
         </div>
       </div>
@@ -957,14 +957,14 @@ function renderStudentNews() {
   if (!grid) return;
 
   grid.innerHTML = newsList.map(item => `
-    <div onclick="openStudentNewsModal('${safeString(item?.id, 'news')}')" class="bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-premium border border-slate-100 dark:border-slate-700/50 cursor-pointer hover:-translate-y-1.5 transition-all duration-200">
+    <div onclick="openStudentNewsModal('${scEscape(safeString(item?.id, 'news'))}')" class="bg-white dark:bg-slate-800 rounded-3xl overflow-hidden shadow-premium border border-slate-100 dark:border-slate-700/50 cursor-pointer hover:-translate-y-1.5 transition-all duration-200">
       <div class="h-48 bg-slate-100 dark:bg-slate-900 relative">
         <img src="${scEscape(safeString(item?.imgUrl).trim() || 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800')}" class="w-full h-full object-cover" alt="news">
       </div>
       <div class="p-6">
-        <span class="text-[10px] font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-wider font-english">${safeString(item?.date, 'ไม่ระบุ')}</span>
-        <h4 class="font-extrabold text-base text-slate-900 dark:text-white mt-1 line-clamp-2">${safeString(item?.headline, 'ข่าวสาร')}</h4>
-        <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-3 leading-relaxed">${safeString(item?.content, 'ไม่มีรายละเอียด')}</p>
+        <span class="text-[10px] font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-wider font-english">${scEscape(safeString(item?.date, 'ไม่ระบุ'))}</span>
+        <h4 class="font-extrabold text-base text-slate-900 dark:text-white mt-1 line-clamp-2">${scEscape(safeString(item?.headline, 'ข่าวสาร'))}</h4>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-3 leading-relaxed">${scEscape(safeString(item?.content, 'ไม่มีรายละเอียด'))}</p>
       </div>
     </div>
   `).join('');
@@ -1001,12 +1001,12 @@ function renderStudentLinks() {
   container.innerHTML = categories.map(cat => `
     <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-premium border border-slate-100 dark:border-slate-700/50">
       <h3 class="font-extrabold text-base text-slate-900 dark:text-white mb-4 flex items-center">
-        <i class="fa-solid fa-folder-open text-blue-500 mr-2.5"></i>${cat}
+        <i class="fa-solid fa-folder-open text-blue-500 mr-2.5"></i>${scEscape(cat)}
       </h3>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         ${links.filter(l => l.category === cat).map(link => `
-          <a href="${link.url}" target="_blank" class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-700/50 hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:border-blue-300 dark:hover:border-blue-700 transition flex items-center justify-between group">
-            <span class="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">${link.name}</span>
+          <a href="${scEscape(link.url)}" target="_blank" rel="noopener" class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-700/50 hover:bg-blue-50 dark:hover:bg-blue-950/30 hover:border-blue-300 dark:hover:border-blue-700 transition flex items-center justify-between group">
+            <span class="text-xs font-bold text-slate-800 dark:text-slate-200 group-hover:text-blue-600 dark:group-hover:text-blue-400">${scEscape(link.name)}</span>
             <i class="fa-solid fa-arrow-up-right-from-square text-xs text-slate-400 group-hover:text-blue-500 transition"></i>
           </a>
         `).join('')}
@@ -1106,8 +1106,8 @@ function handleReportImagesChange(files) {
   }
 
   selected.forEach(file => {
-    if (!file.type.startsWith('image/')) {
-      showToast(`${file.name} ไม่ใช่ไฟล์รูปภาพ`, 'error');
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      showToast(`${file.name}: รองรับเฉพาะไฟล์ JPG, PNG, WEBP`, 'error');
       return;
     }
     if (file.size > MAX_SCHOOL_IMAGE_BYTES) {
@@ -1116,18 +1116,15 @@ function handleReportImagesChange(files) {
     }
 
     reportImageFiles.push(file);
-    const reader = new FileReader();
-    reader.onload = () => {
-      uploadedReportImages.push(reader.result);
-      renderReportImagePreviews();
-    };
-    reader.readAsDataURL(file);
+    uploadedReportImages.push(URL.createObjectURL(file));
   });
+  renderReportImagePreviews();
 }
 
 function removeReportImage(index) {
   reportImageFiles.splice(index, 1);
-  uploadedReportImages.splice(index, 1);
+  const [removedPreview] = uploadedReportImages.splice(index, 1);
+  if (removedPreview && removedPreview.startsWith('blob:')) URL.revokeObjectURL(removedPreview);
   renderReportImagePreviews();
 }
 
@@ -1325,10 +1322,10 @@ function renderStudentTrack() {
         <div class="flex items-center space-x-3 mb-2">
           <span class="text-[11px] font-extrabold text-blue-600 dark:text-blue-400 font-english">${r.id}</span>
           ${statusBadge('report', r.status)}
-          <span class="text-[11px] text-slate-400 font-medium">${r.datetime.replace('T', ' ')}</span>
+          <span class="text-[11px] text-slate-400 font-medium">${scEscape(safeDate(r.datetime))}</span>
         </div>
-        <h4 class="font-extrabold text-base text-slate-900 dark:text-white">${r.title}</h4>
-        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">สถานที่: ${r.location} | หมวดหมู่: ${r.category}</p>
+        <h4 class="font-extrabold text-base text-slate-900 dark:text-white">${scEscape(r.title)}</h4>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">สถานที่: ${scEscape(r.location)} | หมวดหมู่: ${scEscape(r.category)}</p>
       </div>
       <button class="py-2 px-4 rounded-xl bg-slate-100 dark:bg-slate-700 hover:bg-blue-600 hover:text-white text-xs font-bold text-slate-700 dark:text-slate-200 transition">
         ดูรายละเอียด
@@ -1458,10 +1455,10 @@ function renderAdminDashboard() {
   if (recentTbody) {
     recentTbody.innerHTML = (db.reports || []).slice(0, 5).map(r => `
       <tr class="border-b border-slate-100 dark:border-slate-700/50">
-        <td class="py-3 px-2 font-bold">${r.title}</td>
-        <td class="py-3 px-2 text-slate-500">${r.category}</td>
-        <td class="py-3 px-2">${r.reporterName}</td>
-        <td class="py-3 px-2 font-english text-slate-400">${r.datetime.split('T')[0]}</td>
+        <td class="py-3 px-2 font-bold">${scEscape(r.title)}</td>
+        <td class="py-3 px-2 text-slate-500">${scEscape(r.category)}</td>
+        <td class="py-3 px-2">${scEscape(r.reporterName)}</td>
+        <td class="py-3 px-2 font-english text-slate-400">${scEscape(safeDate(r.datetime).split(' ')[0])}</td>
         <td class="py-3 px-2 text-center">
           <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${r.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">
             ${r.status}
@@ -1491,10 +1488,10 @@ function renderAdminReports() {
 
   tbody.innerHTML = reports.map(r => `
     <tr>
-      <td class="p-4"><span class="font-bold text-blue-600 font-english">${r.id}</span><br><span class="text-slate-400">${r.reporterName} (${r.classroom})</span></td>
-      <td class="p-4 font-semibold text-slate-600 dark:text-slate-300">${r.category}</td>
-      <td class="p-4"><span class="font-bold">${r.title}</span><br><span class="text-slate-400">${r.location}</span></td>
-      <td class="p-4 font-english text-slate-500">${r.datetime.replace('T', ' ')}</td>
+      <td class="p-4"><span class="font-bold text-blue-600 font-english">${r.id}</span><br><span class="text-slate-400">${scEscape(r.reporterName)} (${scEscape(r.classroom)})</span></td>
+      <td class="p-4 font-semibold text-slate-600 dark:text-slate-300">${scEscape(r.category)}</td>
+      <td class="p-4"><span class="font-bold">${scEscape(r.title)}</span><br><span class="text-slate-400">${scEscape(r.location)}</span></td>
+      <td class="p-4 font-english text-slate-500">${scEscape(safeDate(r.datetime))}</td>
       <td class="p-4 text-center">
         ${statusBadge('report', r.status)}
       </td>
@@ -1540,6 +1537,21 @@ const SC_STATUS_META = {
     returned: ['ส่งคืนแล้ว', 'success', 'fa-circle-check']
   }
 };
+
+async function refreshPublicReports() {
+  if (!isSupabaseReady() || typeof sb.rpc !== 'function') return;
+  const { data, error } = await sb.rpc('public_report_overview');
+  if (error) {
+    if (!refreshPublicReports.warned) console.info('public_report_overview is not installed yet; public stats use the signed-in user\'s own reports.');
+    refreshPublicReports.warned = true;
+    return;
+  }
+  db.publicReports = (data || []).map(r => ({
+    id: r.id, title: r.title || '', category: r.category || '', location: r.location || '',
+    datetime: r.datetime || '', status: r.status || 'pending', resolutionDate: r.resolution_date || ''
+  }));
+  inMemoryDB = normalizeDB(db);
+}
 
 function statusBadge(kind, status) {
   const meta = SC_STATUS_META[kind]?.[status] || [status || '-', 'neutral', 'fa-circle'];
@@ -1706,6 +1718,7 @@ async function refreshAllRemoteData() {
     db.news = newsRows.map(mapNews);
     db.links = linkRows.map(mapLink);
     db.achievements = achievementRows.map(mapAchievement);
+    try { await refreshPublicReports(); } catch (e) { console.warn('Public report overview failed:', e); }
 
     if (currentRole === 'student' || currentRole === 'admin') {
       await Promise.all([refreshRemoteReports(), refreshRemoteSongs(), refreshRemoteLostFound()]);
@@ -2125,20 +2138,20 @@ async function renderStudentChat() {
   try {
     await ensureChatSession();
     const messages = await fetchChatMessages(currentUser.authId);
-    container.innerHTML = messages.map(m => `<div class="flex flex-col ${m.sender==='student'?'items-end':'items-start'}"><div class="max-w-[80%] p-3.5 rounded-2xl text-xs ${m.sender==='student'?'bg-blue-600 text-white rounded-br-none':'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-bl-none'} shadow-sm"><p class="leading-relaxed">${scEscape(m.text)}</p>${(m.attachments||[]).map(a=>`<img src="${scEscape(a.dataUrl||a.url||'')}" class="mt-2 max-w-full max-h-48 rounded-xl object-cover">`).join('')}</div><span class="text-[9px] text-slate-400 mt-1">${scEscape(m.time)}</span></div>`).join('') || '<div class="text-center text-slate-400 py-12">เริ่มต้นแชทกับแอดมินได้เลย</div>';
+    container.innerHTML = messages.map(m => `<div class="flex flex-col ${m.sender==='student'?'items-end':'items-start'}"><div class="max-w-[80%] p-3.5 rounded-2xl text-xs ${m.sender==='student'?'bg-blue-600 text-white rounded-br-none':'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-bl-none'} shadow-sm">${m.text ? `<p class="leading-relaxed">${scEscape(m.text)}</p>` : ''}${(m.attachments||[]).map(a=>`<img src="${scEscape(a.dataUrl||a.url||'')}" class="mt-2 max-w-full max-h-48 rounded-xl object-cover">`).join('')}</div><span class="text-[9px] text-slate-400 mt-1">${scEscape(m.time)}</span></div>`).join('') || '<div class="text-center text-slate-400 py-12">เริ่มต้นแชทกับแอดมินได้เลย</div>';
     container.scrollTop = container.scrollHeight;
   } catch (e) { console.error(e); showToast('โหลดแชทไม่สำเร็จ: ' + e.message, 'error'); }
 }
 
 async function sendStudentChat() {
   if (currentRole !== 'student' || !currentUser?.authId) { showToast('กรุณาเข้าสู่ระบบ', 'error'); return; }
-  const input = document.getElementById('student-chat-input'); const text = input?.value.trim(); if (!text) return;
+  const input = document.getElementById('student-chat-input'); const text = input?.value.trim() || ''; if (!text && !pendingStudentChatAttachments.length) return;
   try {
     await ensureChatSession();
-    const { error } = await sb.from('chat_messages').insert({ session_id: currentUser.authId, sender_id: currentUser.authId, sender_role: 'student', text, attachments: pendingStudentChatAttachments });
+    const { error } = await sb.from('chat_messages').insert({ session_id: currentUser.authId, sender_id: currentUser.authId, sender_role: 'student', text, attachments: await uploadChatAttachments(pendingStudentChatAttachments) });
     if (error) throw error;
     await sb.from('chat_sessions').update({ last_message_at: new Date().toISOString() }).eq('id', currentUser.authId);
-    input.value = ''; pendingStudentChatAttachments = []; const a=document.getElementById('student-chat-attachments'); if(a)a.innerHTML=''; await renderStudentChat();
+    input.value = ''; pendingStudentChatAttachments.forEach(a => a.previewUrl && URL.revokeObjectURL(a.previewUrl)); pendingStudentChatAttachments = []; const a=document.getElementById('student-chat-attachments'); if(a)a.innerHTML=''; await renderStudentChat();
   } catch (e) { console.error(e); showToast('ส่งข้อความไม่สำเร็จ: ' + e.message, 'error'); }
 }
 
@@ -2181,7 +2194,7 @@ async function renderAdminChatMessages(sessionId) {
     const caption = document.getElementById('admin-chat-session-caption');
     if (caption && session) caption.innerText = `${session.student_name} · ${session.student_id} · ${session.classroom || ''}`;
     const messages = await fetchChatMessages(sessionId);
-    container.innerHTML = messages.map(m => `<div class="flex flex-col ${m.sender==='admin'?'items-end':'items-start'}"><div class="max-w-[80%] p-3.5 rounded-2xl text-xs ${m.sender==='admin'?'bg-emerald-600 text-white rounded-br-none':'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-bl-none'} shadow-sm"><p class="leading-relaxed">${scEscape(m.text)}</p>${(m.attachments||[]).map(a=>`<img src="${scEscape(a.dataUrl||a.url||'')}" class="mt-2 max-w-full max-h-48 rounded-xl object-cover">`).join('')}</div><span class="text-[9px] text-slate-400 mt-1">${scEscape(m.time)}</span></div>`).join('') || '<div class="text-center text-slate-400 py-12">ยังไม่มีข้อความ</div>';
+    container.innerHTML = messages.map(m => `<div class="flex flex-col ${m.sender==='admin'?'items-end':'items-start'}"><div class="max-w-[80%] p-3.5 rounded-2xl text-xs ${m.sender==='admin'?'bg-emerald-600 text-white rounded-br-none':'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-bl-none'} shadow-sm">${m.text ? `<p class="leading-relaxed">${scEscape(m.text)}</p>` : ''}${(m.attachments||[]).map(a=>`<img src="${scEscape(a.dataUrl||a.url||'')}" class="mt-2 max-w-full max-h-48 rounded-xl object-cover">`).join('')}</div><span class="text-[9px] text-slate-400 mt-1">${scEscape(m.time)}</span></div>`).join('') || '<div class="text-center text-slate-400 py-12">ยังไม่มีข้อความ</div>';
     if (sessionId === currentChatSessionId) markSessionRead(sessionId, session?.last_message_at || new Date().toISOString());
     container.scrollTop = container.scrollHeight;
   } catch (e) { console.error(e); }
@@ -2189,12 +2202,12 @@ async function renderAdminChatMessages(sessionId) {
 
 async function sendAdminChat() {
   if (currentRole !== 'admin' || !currentUser?.authId || !currentChatSessionId) { showToast('เลือกห้องแชทก่อน', 'error'); return; }
-  const input = document.getElementById('admin-chat-input'); const text = input?.value.trim(); if (!text) return;
+  const input = document.getElementById('admin-chat-input'); const text = input?.value.trim() || ''; if (!text && !pendingAdminChatAttachments.length) return;
   try {
-    const { error } = await sb.from('chat_messages').insert({ session_id: currentChatSessionId, sender_id: currentUser.authId, sender_role: 'admin', text, attachments: pendingAdminChatAttachments });
+    const { error } = await sb.from('chat_messages').insert({ session_id: currentChatSessionId, sender_id: currentUser.authId, sender_role: 'admin', text, attachments: await uploadChatAttachments(pendingAdminChatAttachments) });
     if (error) throw error;
     await sb.from('chat_sessions').update({ last_message_at: new Date().toISOString() }).eq('id', currentChatSessionId);
-    input.value = ''; pendingAdminChatAttachments = []; const a=document.getElementById('admin-chat-attachments'); if(a)a.innerHTML=''; await renderAdminChat();
+    input.value = ''; pendingAdminChatAttachments.forEach(a => a.previewUrl && URL.revokeObjectURL(a.previewUrl)); pendingAdminChatAttachments = []; const a=document.getElementById('admin-chat-attachments'); if(a)a.innerHTML=''; await renderAdminChat();
   } catch (e) { console.error(e); showToast('ส่งข้อความไม่สำเร็จ: ' + e.message, 'error'); }
 }
 
@@ -2286,7 +2299,7 @@ async function setupSupabaseRealtime(){
     .on('postgres_changes',{event:'*',schema:'public',table:'songs'},()=>{if(currentRole==='student')renderStudentSongs();if(currentRole==='admin')renderAdminSongs();})
     .on('postgres_changes',{event:'*',schema:'public',table:'lost_found'},()=>{if(currentRole==='student')renderStudentLostFound();if(currentRole==='admin')renderAdminLostFound();})
     .on('postgres_changes',{event:'*',schema:'public',table:'reports'},()=>{
-      refreshRemoteReports().then(() => {
+      Promise.all([refreshRemoteReports(), refreshPublicReports()]).catch(err => console.error('Report refresh failed:', err)).then(() => {
         renderPublicAchievements();
         if (currentRole === 'student') renderStudentTrack();
         if (currentRole === 'admin') {
@@ -2327,30 +2340,54 @@ async function initApp(){
 let pendingStudentChatAttachments = [];
 let pendingAdminChatAttachments = [];
 
+const CHAT_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+function chatAttachmentList(role) {
+  return role === 'student' ? pendingStudentChatAttachments : pendingAdminChatAttachments;
+}
+
+function renderChatAttachmentPreviews(role) {
+  const target = document.getElementById(role === 'student' ? 'student-chat-attachments' : 'admin-chat-attachments');
+  if (!target) return;
+  target.innerHTML = chatAttachmentList(role).map((a, i) => `<div class="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700"><img src="${scEscape(a.previewUrl || a.url || '')}" class="w-full h-20 object-cover" alt=""><button type="button" onclick="removeChatAttachment('${role}',${i})" class="absolute top-1 right-1 w-6 h-6 rounded-full bg-rose-600 text-white" aria-label="ลบรูป">×</button></div>`).join('');
+}
+
 function handleChatFileChange(role) {
   const input = document.getElementById(role === 'student' ? 'student-chat-file-input' : 'admin-chat-file-input');
-  const target = document.getElementById(role === 'student' ? 'student-chat-attachments' : 'admin-chat-attachments');
-  if (!input || !target) return;
-  const files = Array.from(input.files || []).slice(0, 3);
-  const pending = [];
-  Promise.all(files.map(file => new Promise((resolve, reject) => {
-    if (!file.type.startsWith('image/')) return resolve(null);
-    if (file.size > 10 * 1024 * 1024) { showToast(`${file.name} ใหญ่เกิน 10MB`, 'error'); return resolve(null); }
-    const reader = new FileReader();
-    reader.onload = () => resolve({ name: file.name, type: file.type, dataUrl: reader.result });
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  }))).then(items => {
-    items.filter(Boolean).forEach(x => pending.push(x));
-    if (role === 'student') pendingStudentChatAttachments = pending; else pendingAdminChatAttachments = pending;
-    target.innerHTML = pending.map((a, i) => `<div class="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700"><img src="${scEscape(a.dataUrl)}" class="w-full h-20 object-cover"><button type="button" onclick="removeChatAttachment('${role}',${i})" class="absolute top-1 right-1 w-6 h-6 rounded-full bg-rose-600 text-white">×</button></div>`).join('');
-  }).catch(console.error);
+  if (!input) return;
+  const list = chatAttachmentList(role);
+  let warnedLimit = false;
+  Array.from(input.files || []).forEach(file => {
+    if (list.length >= 3) {
+      if (!warnedLimit) showToast('แนบรูปได้สูงสุด 3 รูปต่อข้อความ', 'error');
+      warnedLimit = true;
+      return;
+    }
+    if (!CHAT_IMAGE_TYPES.includes(file.type)) { showToast(`${file.name}: รองรับเฉพาะไฟล์ JPG, PNG, WEBP`, 'error'); return; }
+    if (file.size > MAX_SCHOOL_IMAGE_BYTES) { showToast(`${file.name} ใหญ่เกิน 8MB`, 'error'); return; }
+    list.push({ file, name: file.name, type: file.type, previewUrl: URL.createObjectURL(file) });
+  });
+  input.value = '';
+  renderChatAttachmentPreviews(role);
 }
+
 function removeChatAttachment(role, index) {
-  const list = role === 'student' ? pendingStudentChatAttachments : pendingAdminChatAttachments;
-  list.splice(index, 1);
-  const target = document.getElementById(role === 'student' ? 'student-chat-attachments' : 'admin-chat-attachments');
-  if (target) target.innerHTML = list.map((a,i) => `<div class="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700"><img src="${scEscape(a.dataUrl)}" class="w-full h-20 object-cover"><button type="button" onclick="removeChatAttachment('${role}',${i})" class="absolute top-1 right-1 w-6 h-6 rounded-full bg-rose-600 text-white">×</button></div>`).join('');
+  const [removed] = chatAttachmentList(role).splice(index, 1);
+  if (removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl);
+  renderChatAttachmentPreviews(role);
+}
+
+async function uploadChatAttachments(list) {
+  const uploaded = [];
+  for (const a of list) {
+    if (!a.file) { if (a.url) uploaded.push({ name: a.name, type: a.type, url: a.url }); continue; }
+    const ext = a.type === 'image/png' ? 'png' : a.type === 'image/webp' ? 'webp' : 'jpg';
+    const path = `chat/${currentUser.authId}/${crypto.randomUUID()}.${ext}`;
+    const { error } = await sb.storage.from('school-images').upload(path, a.file, { cacheControl: '3600', upsert: false, contentType: a.type });
+    if (error) throw error;
+    uploaded.push({ name: a.name, type: a.type, url: sb.storage.from('school-images').getPublicUrl(path).data.publicUrl });
+  }
+  return uploaded;
 }
 
 
@@ -2688,6 +2725,7 @@ if (document.readyState === 'loading') {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
   const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  const lowPower = (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4;
   const body = document.body;
   const logoSrc = document.querySelector('#sidebar-brand-toggle img, .login-brand-mark img')?.src || '';
   const GOLD = '#f1c644';
@@ -2713,7 +2751,7 @@ if (document.readyState === 'loading') {
     dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     bg.width = innerWidth * dpr;
     bg.height = innerHeight * dpr;
-    const count = Math.round(Math.min(finePointer ? 80 : 38, (innerWidth * innerHeight) / 16000));
+    const count = Math.round(Math.min(finePointer ? 80 : 38, (innerWidth * innerHeight) / 16000) * (lowPower ? .5 : 1));
     dots = Array.from({ length: count }, () => ({
       x: Math.random() * innerWidth,
       y: Math.random() * innerHeight,
@@ -2928,9 +2966,13 @@ if (document.readyState === 'loading') {
     let pendingArgs = null, timer = null, busyUntil = 0;
     window.switchTab = function (tabId) {
       const ev = window.event;
-      const fromClick = ev && ev.type === 'click';
+      const navTarget = ev && ev.type === 'click' && ev.target?.closest?.('#topnav [data-tab], .sidebar-link, #sidebar-brand-toggle');
       const same = typeof currentTab !== 'undefined' && tabId === currentTab;
-      if (!fromClick || same) return innerSwitch.apply(this, arguments);
+      if (!navTarget || same || tabId === 'login') {
+        // Any direct switch wins over a curtain switch that is still waiting.
+        if (timer) { clearTimeout(timer); timer = null; curtain.classList.remove('run'); }
+        return innerSwitch.apply(this, arguments);
+      }
 
       pendingArgs = arguments;
       if (timer) return;
@@ -3329,4 +3371,292 @@ if (document.readyState === 'loading') {
 
   render();
   document.fonts?.ready?.then(() => moveIndicator(visibleActive(), true));
+})();
+
+
+/**
+ * SCLRP Stability Layer
+ * - กันกดซ้ำทุกปุ่มบันทึก/ส่ง และแสดงสถานะกำลังทำงาน
+ * - แจ้งเตือนเมื่อเน็ตหลุด/กลับมา และโหลดข้อมูลใหม่เมื่อกลับมาที่แท็บหลังหายไปนาน
+ * - ดักข้อผิดพลาดที่ไม่คาดคิดแล้วบอกผู้ใช้แบบเข้าใจง่าย
+ * - กด Enter เพื่อส่งแชท (รองรับการพิมพ์ภาษาไทย)
+ * - อัปโหลดรูปปกข่าว/ผลงานได้จริง
+ * - สลับประเภทในฟอร์มของหายโดยข้อมูลที่พิมพ์ไว้ไม่หาย
+ * - ช่องว่างระหว่างโหลดแสดงโครงร่าง และแสดงข้อความเมื่อไม่มีข้อมูล
+ */
+(() => {
+  'use strict';
+
+  const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+  const toast = (msg, type = 'info') => { try { showToast(msg, type); } catch (e) { console.warn(msg); } };
+  let dataLoaded = false;
+
+  /* ---------- 1. ข้อมูลโหลดครั้งแรกเสร็จหรือยัง (ใช้ตัดสินว่าจะแสดงโครงร่างหรือข้อความว่าง) ---------- */
+  const prevRefreshAll = window.refreshAllRemoteData;
+  if (typeof prevRefreshAll === 'function') {
+    window.refreshAllRemoteData = async function () {
+      const ok = await prevRefreshAll.apply(this, arguments);
+      if (ok) {
+        dataLoaded = true;
+        document.documentElement.classList.add('sc-data-ready');
+        applyEmptyStates();
+      }
+      return ok;
+    };
+  }
+
+  /* ---------- 2. ข้อความเมื่อไม่มีข้อมูล ---------- */
+  const EMPTY = {
+    'student-news-grid': ['fa-regular fa-newspaper', 'ยังไม่มีข่าวสาร', 'เมื่อสภานักเรียนลงประกาศ จะแสดงที่นี่'],
+    'pub-achievements-grid': ['fa-solid fa-trophy', 'ยังไม่มีผลงาน', 'ผลงานของสภานักเรียนจะแสดงที่นี่'],
+    'student-links-container': ['fa-solid fa-link', 'ยังไม่มีลิงก์', 'ลิงก์สำคัญจากสภานักเรียนจะแสดงที่นี่']
+  };
+
+  function applyEmptyStates() {
+    if (!dataLoaded) return;
+    Object.entries(EMPTY).forEach(([id, [icon, title, text]]) => {
+      const box = document.getElementById(id);
+      if (!box || box.children.length) return;
+      box.innerHTML = `<div class="sc-empty"><i class="${icon}"></i><strong>${title}</strong><span>${text}</span></div>`;
+    });
+    const tbody = document.getElementById('admin-all-reports-table');
+    const empty = document.getElementById('admin-reports-empty');
+    if (tbody && empty) empty.classList.toggle('hidden', tbody.children.length > 0);
+  }
+
+  ['renderStudentNews', 'renderPublicAchievements', 'renderStudentLinks', 'renderAdminReports'].forEach(name => {
+    const fn = window[name];
+    if (typeof fn !== 'function') return;
+    window[name] = function () {
+      const result = fn.apply(this, arguments);
+      applyEmptyStates();
+      return result;
+    };
+  });
+
+  /* ---------- 3. อัปโหลดรูปปกข่าว / ผลงาน ---------- */
+  const pendingCover = { news: null, achievement: null };
+
+  async function uploadContentImage(file, folder) {
+    const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+    const path = `${folder}/${crypto.randomUUID()}.${ext}`;
+    const { error } = await sb.storage.from('school-images').upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type });
+    if (error) throw error;
+    return sb.storage.from('school-images').getPublicUrl(path).data.publicUrl;
+  }
+
+  function showCoverPreview(kind, src) {
+    const wrap = document.getElementById(`${kind}-editor-img-preview`);
+    const img = document.getElementById(`${kind}-preview-element`);
+    if (!wrap || !img) return;
+    if (src) { img.src = src; wrap.classList.remove('hidden'); }
+    else { img.removeAttribute('src'); wrap.classList.add('hidden'); }
+  }
+
+  function resetCover(kind) {
+    if (pendingCover[kind]?.preview) URL.revokeObjectURL(pendingCover[kind].preview);
+    pendingCover[kind] = null;
+    const fileInput = document.getElementById(`${kind}-editor-img-file`);
+    if (fileInput) fileInput.value = '';
+    showCoverPreview(kind, document.getElementById(`${kind}-editor-img-url`)?.value.trim() || '');
+  }
+
+  ['news', 'achievement'].forEach(kind => {
+    const fileInput = document.getElementById(`${kind}-editor-img-file`);
+    const urlInput = document.getElementById(`${kind}-editor-img-url`);
+    fileInput?.setAttribute('accept', IMAGE_TYPES.join(','));
+    fileInput?.addEventListener('change', () => {
+      const file = fileInput.files?.[0];
+      if (!file) return;
+      if (!IMAGE_TYPES.includes(file.type)) { toast('รองรับเฉพาะไฟล์ JPG, PNG, WEBP', 'error'); fileInput.value = ''; return; }
+      if (file.size > MAX_SCHOOL_IMAGE_BYTES) { toast('รูปภาพต้องมีขนาดไม่เกิน 8MB', 'error'); fileInput.value = ''; return; }
+      if (pendingCover[kind]?.preview) URL.revokeObjectURL(pendingCover[kind].preview);
+      pendingCover[kind] = { file, preview: URL.createObjectURL(file) };
+      showCoverPreview(kind, pendingCover[kind].preview);
+    });
+    urlInput?.addEventListener('input', () => { if (!pendingCover[kind]) showCoverPreview(kind, urlInput.value.trim()); });
+
+    const openName = kind === 'news' ? 'openNewsModal' : 'openAchievementModal';
+    const saveName = kind === 'news' ? 'saveNewsItem' : 'saveAchievementItem';
+    const open = window[openName];
+    if (typeof open === 'function') {
+      window[openName] = function () { const r = open.apply(this, arguments); resetCover(kind); return r; };
+    }
+    const save = window[saveName];
+    if (typeof save === 'function') {
+      window[saveName] = async function () {
+        if (pendingCover[kind]) {
+          try {
+            urlInput.value = await uploadContentImage(pendingCover[kind].file, kind === 'news' ? 'news' : 'achievements');
+            pendingCover[kind] = null;
+          } catch (err) {
+            console.error('Cover upload failed:', err);
+            toast('อัปโหลดรูปไม่สำเร็จ: ' + (err?.message || err), 'error');
+            return;
+          }
+        }
+        return save.apply(this, arguments);
+      };
+    }
+  });
+
+  /* ---------- 4. กันกดซ้ำ + แสดงสถานะกำลังทำงานบนปุ่ม ---------- */
+  function buttonFor(ev) {
+    if (ev?.type === 'submit') return ev.target?.querySelector?.('button[type="submit"]') || null;
+    const fromEvent = ev?.target?.closest?.('button');
+    if (fromEvent) return fromEvent;
+    const active = document.activeElement;
+    return active?.tagName === 'BUTTON' ? active : null;
+  }
+
+  const GUARDED = [
+    'submitProblemReport', 'submitSongRequest', 'submitLostFoundReport',
+    'saveNewsItem', 'saveLinkItem', 'saveAchievementItem', 'saveSongStatus',
+    'saveAdminLostFoundStatus', 'saveReportFromAdmin', 'sendStudentChat', 'sendAdminChat',
+    'deleteNewsItem', 'deleteLinkItem', 'deleteAchievementItem', 'clearPlayedSongs'
+  ];
+
+  GUARDED.forEach(name => {
+    const fn = window[name];
+    if (typeof fn !== 'function') return;
+    let busy = false;
+    window[name] = async function () {
+      if (busy) return;
+      busy = true;
+      const btn = buttonFor(window.event);
+      const wasDisabled = btn?.disabled;
+      if (btn) { btn.disabled = true; btn.classList.add('sc-busy'); btn.setAttribute('aria-busy', 'true'); }
+      try {
+        return await fn.apply(this, arguments);
+      } catch (err) {
+        console.error(`${name} failed:`, err);
+        toast('ทำรายการไม่สำเร็จ: ' + (err?.message || 'กรุณาลองอีกครั้ง'), 'error');
+      } finally {
+        busy = false;
+        if (btn) { btn.disabled = !!wasDisabled; btn.classList.remove('sc-busy'); btn.removeAttribute('aria-busy'); }
+      }
+    };
+  });
+
+  /* ---------- 5. Enter เพื่อส่งแชท ---------- */
+  [['student-chat-input', 'sendStudentChat'], ['admin-chat-input', 'sendAdminChat']].forEach(([id, fnName]) => {
+    const input = document.getElementById(id);
+    input?.setAttribute('enterkeyhint', 'send');
+    input?.setAttribute('autocomplete', 'off');
+    input?.addEventListener('keydown', e => {
+      if (e.key !== 'Enter' || e.shiftKey || e.isComposing || e.keyCode === 229) return;
+      e.preventDefault();
+      window[fnName]?.();
+    });
+  });
+
+  /* ---------- 6. สลับประเภทในฟอร์มของหาย โดยไม่ล้างข้อมูลที่พิมพ์ไว้ ---------- */
+  document.addEventListener('click', e => {
+    const btn = e.target.closest?.('[data-lf-type]');
+    if (!btn) return;
+    const modal = document.getElementById('student-lostfound-modal');
+    if (!modal || modal.classList.contains('hidden')) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const type = btn.dataset.lfType;
+    const isMoney = type === 'money';
+    const typeField = document.getElementById('lf-type');
+    const label = document.getElementById('lf-item-name-label');
+    const itemName = document.getElementById('lf-item-name');
+    if (typeField) {
+      if (isMoney) {
+        const checked = document.querySelector('input[name="money-type"]:checked');
+        typeField.value = checked ? `money_${checked.value}` : '';
+      } else {
+        typeField.value = type;
+        document.querySelectorAll('input[name="money-type"]').forEach(r => { r.checked = false; });
+      }
+    }
+    document.getElementById('lf-money-type-section')?.classList.toggle('hidden', !isMoney);
+    if (label?.firstChild) label.firstChild.textContent = isMoney ? 'จำนวนเงินหรือรายละเอียด ' : 'ชื่อสิ่งของ / รายการ ';
+    if (itemName) itemName.placeholder = isMoney ? 'เช่น จำนวนเงินโดยประมาณ / ลักษณะธนบัตร' : 'เช่น กระเป๋านักเรียน, โทรศัพท์, สมุด';
+    if (isMoney && typeof selectLostFoundCategory === 'function') selectLostFoundCategory('money');
+    document.querySelectorAll('[data-lf-type]').forEach(b => {
+      const on = b === btn;
+      b.classList.toggle('is-active', on);
+      b.setAttribute('aria-pressed', String(on));
+    });
+    const title = document.getElementById('lf-modal-title');
+    if (title) title.textContent = isMoney ? 'แจ้งเงินหาย / เก็บเงินได้' : type === 'found' ? 'แจ้งเก็บของได้' : 'แจ้งของหาย';
+  }, true);
+
+  /* ---------- 7. หัวข้อหน้า: บอกว่าอยู่ส่วนไหนของเว็บ ---------- */
+  const SECTION_OF = {
+    'public-achievements': 'สภานักเรียน LRP',
+    'student-news': 'ข่าวสาร', 'student-links': 'ข่าวสาร',
+    'student-report': 'แจ้งปัญหา', 'student-track': 'แจ้งปัญหา',
+    'student-songs': 'บริการ', 'student-lostfound': 'บริการ',
+    'student-chat': 'ติดต่อสภานักเรียน',
+    'admin-dashboard': 'ผู้ดูแลระบบ', 'admin-reports': 'ผู้ดูแลระบบ', 'admin-chat': 'ผู้ดูแลระบบ',
+    'admin-news': 'จัดการเนื้อหา', 'admin-links': 'จัดการเนื้อหา', 'admin-achievements': 'จัดการเนื้อหา',
+    'admin-songs': 'จัดการบริการ', 'admin-lostfound': 'จัดการบริการ',
+    'login': 'ยินดีต้อนรับ'
+  };
+  const title = document.getElementById('page-header-title');
+  const prevSwitch = window.switchTab;
+  if (typeof prevSwitch === 'function') {
+    window.switchTab = function (tabId) {
+      if (title) title.dataset.eyebrow = SECTION_OF[tabId] || 'สภานักเรียน LRP';
+      return prevSwitch.apply(this, arguments);
+    };
+  }
+  if (title) title.dataset.eyebrow = 'สภานักเรียน LRP';
+
+  /* ---------- 8. เน็ตหลุด / กลับมา ---------- */
+  addEventListener('offline', () => toast('ไม่มีการเชื่อมต่ออินเทอร์เน็ต ข้อมูลอาจไม่อัปเดตจนกว่าจะกลับมาออนไลน์', 'error'));
+  addEventListener('online', () => {
+    toast('กลับมาออนไลน์แล้ว กำลังโหลดข้อมูลล่าสุด', 'success');
+    refreshCurrentView();
+  });
+
+  /* ---------- 9. กลับมาที่แท็บหลังหายไปนาน: โหลดข้อมูลใหม่แบบเงียบ ๆ ---------- */
+  const RENDER_OF = {
+    'public-achievements': 'renderPublicAchievements', 'student-news': 'renderStudentNews', 'student-links': 'renderStudentLinks',
+    'student-track': 'renderStudentTrack', 'student-songs': 'renderStudentSongs', 'student-lostfound': 'renderStudentLostFound',
+    'student-chat': 'renderStudentChat', 'admin-dashboard': 'renderAdminDashboard', 'admin-reports': 'renderAdminReports',
+    'admin-news': 'renderAdminNews', 'admin-links': 'renderAdminLinks', 'admin-achievements': 'renderAdminAchievements',
+    'admin-songs': 'renderAdminSongs', 'admin-lostfound': 'renderAdminLostFound', 'admin-chat': 'renderAdminChat'
+  };
+
+  let refreshing = false;
+  async function refreshCurrentView() {
+    if (refreshing || typeof window.refreshAllRemoteData !== 'function') return;
+    refreshing = true;
+    try {
+      await window.refreshAllRemoteData();
+      const fn = window[RENDER_OF[typeof currentTab !== 'undefined' ? currentTab : '']];
+      if (typeof fn === 'function') await fn();
+    } catch (err) {
+      console.error('Background refresh failed:', err);
+    } finally {
+      refreshing = false;
+    }
+  }
+
+  let hiddenAt = 0;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { hiddenAt = Date.now(); return; }
+    if (hiddenAt && Date.now() - hiddenAt > 60000 && navigator.onLine !== false) refreshCurrentView();
+  });
+
+  /* ---------- 10. ข้อผิดพลาดที่ไม่คาดคิด ---------- */
+  let lastErrorToast = 0;
+  function reportUnexpected(err) {
+    const msg = String(err?.message || err || '');
+    if (/ResizeObserver loop|Script error\.?$|AbortError/i.test(msg)) return;
+    console.error('Unexpected error:', err);
+    if (Date.now() - lastErrorToast < 8000) return;
+    lastErrorToast = Date.now();
+    toast(navigator.onLine === false
+      ? 'ไม่มีการเชื่อมต่ออินเทอร์เน็ต กรุณาตรวจสอบแล้วลองอีกครั้ง'
+      : 'มีบางอย่างไม่เป็นไปตามที่ควร ลองอีกครั้ง หรือรีเฟรชหน้า', 'error');
+  }
+  addEventListener('error', e => { if (e.error) reportUnexpected(e.error); });
+  addEventListener('unhandledrejection', e => reportUnexpected(e.reason));
 })();
