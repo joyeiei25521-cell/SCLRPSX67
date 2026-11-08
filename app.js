@@ -848,7 +848,7 @@ function renderPublicAchievements() {
           labels: ['เสร็จสิ้น', 'ไม่สามารถทำได้', 'กำลังดำเนินการ'],
           datasets: [{
             data: [completed, failed, processing],
-            backgroundColor: ['#10b981', '#f43f5e', '#f59e0b'],
+            backgroundColor: ['#16a34a', '#e11d48', '#f1c644'],
             borderWidth: 0
           }]
         },
@@ -878,7 +878,7 @@ function renderPublicAchievements() {
           datasets: [{
             label: 'จำนวนเรื่อง',
             data: catCounts,
-            backgroundColor: '#3b82f6',
+            backgroundColor: '#2456a6',
             borderRadius: 8
           }]
         },
@@ -1324,7 +1324,7 @@ function renderStudentTrack() {
       <div>
         <div class="flex items-center space-x-3 mb-2">
           <span class="text-[11px] font-extrabold text-blue-600 dark:text-blue-400 font-english">${r.id}</span>
-          ${statusBadges[r.status] || ''}
+          ${statusBadge('report', r.status)}
           <span class="text-[11px] text-slate-400 font-medium">${r.datetime.replace('T', ' ')}</span>
         </div>
         <h4 class="font-extrabold text-base text-slate-900 dark:text-white">${r.title}</h4>
@@ -1496,9 +1496,7 @@ function renderAdminReports() {
       <td class="p-4"><span class="font-bold">${r.title}</span><br><span class="text-slate-400">${r.location}</span></td>
       <td class="p-4 font-english text-slate-500">${r.datetime.replace('T', ' ')}</td>
       <td class="p-4 text-center">
-        <span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase ${r.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">
-          ${r.status}
-        </span>
+        ${statusBadge('report', r.status)}
       </td>
       <td class="p-4 text-right">
         <button onclick="openReportDetailModal('${r.id}')" class="py-1.5 px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold">จัดการ</button>
@@ -1520,6 +1518,93 @@ function scEscape(value) {
 
 function scId(prefix) {
   return `${prefix}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+}
+
+/* -------------------- shared UI helpers (unified badges + admin charts) -------------------- */
+const SC_STATUS_META = {
+  report: {
+    pending: ['รอรับเรื่อง', 'neutral', 'fa-clock'],
+    processing: ['กำลังดำเนินการ', 'warning', 'fa-spinner'],
+    completed: ['ดำเนินการแล้ว', 'success', 'fa-circle-check'],
+    failed: ['ไม่สามารถทำได้', 'danger', 'fa-circle-xmark']
+  },
+  song: {
+    pending: ['รอคิว', 'neutral', 'fa-clock'],
+    approved: ['เตรียมเปิด', 'info', 'fa-headphones'],
+    played: ['เปิดแล้ว', 'success', 'fa-circle-check'],
+    rejected: ['ปฏิเสธ', 'danger', 'fa-ban']
+  },
+  lf: {
+    searching: ['กำลังตามหา', 'warning', 'fa-magnifying-glass'],
+    found_matching: ['พบของที่ตรงกัน', 'info', 'fa-handshake'],
+    returned: ['ส่งคืนแล้ว', 'success', 'fa-circle-check']
+  }
+};
+
+function statusBadge(kind, status) {
+  const meta = SC_STATUS_META[kind]?.[status] || [status || '-', 'neutral', 'fa-circle'];
+  return `<span class="sc-badge sc-badge--${meta[1]}"><i class="fa-solid ${meta[2]}"></i>${scEscape(meta[0])}</span>`;
+}
+
+function typeBadge(type) {
+  return type === 'lost'
+    ? '<span class="sc-badge sc-badge--danger"><i class="fa-solid fa-magnifying-glass"></i>ของหาย</span>'
+    : '<span class="sc-badge sc-badge--success"><i class="fa-solid fa-hand-holding-heart"></i>เก็บได้</span>';
+}
+
+function lfCategoryLabel(value) {
+  const found = (typeof lostFoundCategories !== 'undefined' ? lostFoundCategories : []).find(c => c.value === value);
+  return found ? found.label : (value || '-');
+}
+
+const SC_REPORT_CATEGORIES = ['อาคารสถานที่', 'ห้องน้ำ', 'ไฟฟ้า', 'อินเทอร์เน็ต', 'ความสะอาด', 'ความปลอดภัย', 'อื่น ๆ'];
+const SC_CHART_PALETTE = ['#2456a6', '#3475ce', '#f1c644', '#173b78', '#7fa6de', '#d6a916', '#94a3b8'];
+
+function renderAdminCharts(reports) {
+  if (typeof Chart !== 'function') return;
+  const isDark = document.documentElement.classList.contains('dark');
+  const tick = isDark ? '#9cabc0' : '#68778e';
+  const grid = isDark ? 'rgba(170,193,226,.12)' : 'rgba(36,67,117,.08)';
+
+  const catCanvas = document.getElementById('adminCategoryChart');
+  if (catCanvas) {
+    if (window.adminChart1) window.adminChart1.destroy();
+    window.adminChart1 = new Chart(catCanvas, {
+      type: 'doughnut',
+      data: {
+        labels: SC_REPORT_CATEGORIES,
+        datasets: [{ data: SC_REPORT_CATEGORIES.map(c => reports.filter(r => r.category === c).length), backgroundColor: SC_CHART_PALETTE, borderWidth: 0 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, cutout: '68%', plugins: { legend: { position: 'bottom', labels: { color: tick, boxWidth: 10, usePointStyle: true } } } }
+    });
+  }
+
+  const monthCanvas = document.getElementById('adminMonthlyChart');
+  if (monthCanvas) {
+    const thMonths = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+    const now = new Date();
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({ key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`, label: thMonths[d.getMonth()] });
+    }
+    if (window.adminChart2) window.adminChart2.destroy();
+    window.adminChart2 = new Chart(monthCanvas, {
+      type: 'bar',
+      data: {
+        labels: months.map(m => m.label),
+        datasets: [{ label: 'จำนวนเรื่อง', data: months.map(m => reports.filter(r => String(r.datetime || '').slice(0, 7) === m.key).length), backgroundColor: '#2456a6', borderRadius: 8, maxBarThickness: 36 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: tick } },
+          y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0, color: tick }, grid: { color: grid } }
+        }
+      }
+    });
+  }
 }
 
 function mapNews(row) {
@@ -1722,12 +1807,12 @@ async function renderStudentSongs() {
   };
   container.innerHTML = songs.map(s => `
     <div class="p-5 bg-white dark:bg-slate-800 rounded-3xl shadow-premium border border-slate-100 dark:border-slate-700/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-      <div class="flex items-start space-x-4"><div class="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-500 flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-music"></i></div>
+      <div class="flex items-start space-x-4"><div class="sc-icon-chip shrink-0"><i class="fa-solid fa-music"></i></div>
       <div><h4 class="font-extrabold text-base text-slate-900 dark:text-white">${scEscape(s.title)} - <span class="text-slate-500 font-medium">${scEscape(s.artist)}</span></h4>
       <p class="text-xs text-slate-400 mt-1 font-medium">ผู้ขอ: ${scEscape(s.requesterName)} | วันที่: ${scEscape(s.date)}</p>
       ${s.message ? `<p class="text-xs text-slate-600 dark:text-slate-300 mt-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/50">"${scEscape(s.message)}"</p>` : ''}
       ${s.feedback ? `<p class="text-xs text-emerald-600 dark:text-emerald-400 mt-2 font-bold">ตอบกลับจากแอดมิน: ${scEscape(s.feedback)}</p>` : ''}</div></div>
-      <div>${statusBadges[s.status] || ''}</div></div>`).join('') || '<div class="p-10 text-center text-slate-400">ยังไม่มีคำขอเพลง</div>';
+      <div>${statusBadge('song', s.status)}</div></div>`).join('') || '<div class="p-10 text-center text-slate-400">ยังไม่มีคำขอเพลง</div>';
 }
 
 /* -------------------- lost & found -------------------- */
@@ -1878,6 +1963,13 @@ function openLostFoundModal(type = 'lost') {
   safeValue('lf-classroom', currentUser.class || '');
   safeValue('lf-category', 'others');
   renderLostFoundCategories('others');
+  const activeLFType = isMoney ? 'money' : (type === 'found' ? 'found' : 'lost');
+  document.querySelectorAll('[data-lf-type]').forEach(btn => {
+    const on = btn.dataset.lfType === activeLFType;
+    btn.classList.toggle('is-active', on);
+    btn.setAttribute('aria-pressed', String(on));
+  });
+  safeText('lf-modal-title', activeLFType === 'money' ? 'แจ้งเงินหาย / เก็บเงินได้' : activeLFType === 'found' ? 'แจ้งเก็บของได้' : 'แจ้งของหาย');
   openModal('student-lostfound-modal');
 }
 
@@ -2000,7 +2092,7 @@ async function renderStudentLostFound() {
   const lc = document.getElementById('lost-count'); if (lc) lc.innerText = lostList.length;
   const fc = document.getElementById('found-count'); if (fc) fc.innerText = foundList.length;
   const renderCard = i => `<div class="p-5 bg-white dark:bg-slate-800 rounded-3xl shadow-premium border border-slate-100 dark:border-slate-700/50 flex flex-col justify-between ${i.pinned ? 'ring-2 ring-yellow-400' : ''}">
-    <div><div class="flex items-center justify-between mb-2"><span class="px-3 py-1 rounded-full ${i.type==='lost'?'bg-rose-100 text-rose-700':'bg-emerald-100 text-emerald-700'} text-[10px] font-extrabold">${i.type==='lost'?'ของหาย':'เก็บได้'}</span><span class="text-[10px] text-slate-400">${scEscape((i.datetime||'').replace('T',' '))}</span></div>
+    <div><div class="flex items-center justify-between mb-2"><span class="flex flex-wrap gap-1.5">${typeBadge(i.type)}${statusBadge('lf', i.status)}</span><span class="text-[10px] text-slate-400">${scEscape((i.datetime||'').replace('T',' '))}</span></div>
     <h4 class="font-extrabold text-base text-slate-900 dark:text-white">${scEscape(i.itemName)}</h4><p class="text-xs text-slate-500 mt-1">สถานที่: ${scEscape(i.location)}</p><p class="text-xs text-slate-600 dark:text-slate-300 mt-2">${scEscape(i.description||'ไม่มีรายละเอียดเพิ่มเติม')}</p>
     ${i.notes ? `<p class="text-xs text-blue-600 mt-2 font-bold">หมายเหตุแอดมิน: ${scEscape(i.notes)}</p>` : ''}</div>
     <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/50 flex items-center justify-between text-xs"><span class="text-slate-400">ผู้แจ้ง: ${scEscape(i.reporterName)}</span><span class="font-extrabold text-blue-600">${scEscape(i.contact)}</span></div></div>`;
@@ -2146,20 +2238,20 @@ async function deleteAchievementItem(id){if(!(await requireAdmin()))return;if(!c
 function renderAdminAchievements(){const tbody=document.getElementById('admin-achievements-table-body');if(!tbody)return;tbody.innerHTML=(db.achievements||[]).map(a=>`<tr><td class="p-4"><img src="${scEscape(a.imgUrl||'https://placehold.co/120x70')}" class="w-24 h-14 object-cover rounded-xl"></td><td class="p-4 font-bold">${scEscape(a.headline)}</td><td class="p-4">${scEscape(a.responsible)}</td><td class="p-4">${scEscape(a.date)}</td><td class="p-4 text-right"><button onclick="openAchievementModal('${a.id}')" class="px-3 py-1.5 bg-blue-600 text-white rounded-lg mr-2">แก้ไข</button><button onclick="deleteAchievementItem('${a.id}')" class="px-3 py-1.5 bg-rose-600 text-white rounded-lg">ลบ</button></td></tr>`).join('')||'<tr><td colspan="5" class="p-10 text-center text-slate-400">ยังไม่มีผลงาน</td></tr>';}
 
 /* -------------------- admin songs -------------------- */
-async function renderAdminSongs(){if(!(await requireAdmin()))return;try{await refreshRemoteSongs();}catch(e){console.error(e);}let songs=[...(db.songs||[])];const status=document.getElementById('admin-song-filter-status')?.value||'all';const q=(document.getElementById('admin-song-search')?.value||'').toLowerCase();if(status!=='all')songs=songs.filter(s=>s.status===status);if(q)songs=songs.filter(s=>`${s.title} ${s.artist} ${s.requesterName}`.toLowerCase().includes(q));const tbody=document.getElementById('admin-songs-table-body');if(!tbody)return;tbody.innerHTML=songs.map(s=>`<tr><td class="p-4"><b>${scEscape(s.title)}</b><br><span class="text-slate-400">${scEscape(s.artist)}</span></td><td class="p-4">${scEscape(s.requesterName)}<br><span class="text-slate-400">${scEscape(s.date)}</span></td><td class="p-4 max-w-xs">${scEscape(s.message||'-')}</td><td class="p-4"><span class="px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-700">${scEscape(s.status)}</span></td><td class="p-4 text-right"><button onclick="openAdminSongModal('${s.id}')" class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg">จัดการ</button></td></tr>`).join('')||'<tr><td colspan="5" class="p-10 text-center text-slate-400">ไม่พบคำขอเพลง</td></tr>';}
+async function renderAdminSongs(){if(!(await requireAdmin()))return;try{await refreshRemoteSongs();}catch(e){console.error(e);}let songs=[...(db.songs||[])];const status=document.getElementById('admin-song-filter-status')?.value||'all';const q=(document.getElementById('admin-song-search')?.value||'').toLowerCase();if(status!=='all')songs=songs.filter(s=>s.status===status);if(q)songs=songs.filter(s=>`${s.title} ${s.artist} ${s.requesterName}`.toLowerCase().includes(q));const tbody=document.getElementById('admin-songs-table-body');if(!tbody)return;tbody.innerHTML=songs.map(s=>`<tr><td class="p-4"><b>${scEscape(s.title)}</b><br><span class="text-slate-400">${scEscape(s.artist)}</span></td><td class="p-4">${scEscape(s.requesterName)}<br><span class="text-slate-400">${scEscape(s.date)}</span></td><td class="p-4 max-w-xs">${scEscape(s.message||'-')}</td><td class="p-4">${statusBadge('song', s.status)}</td><td class="p-4 text-right"><button onclick="openAdminSongModal('${s.id}')" class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg">จัดการ</button></td></tr>`).join('')||'<tr><td colspan="5" class="p-10 text-center text-slate-400">ไม่พบคำขอเพลง</td></tr>';}
 function openAdminSongModal(id){const s=(db.songs||[]).find(x=>x.id===id);if(!s)return;safeValue('admin-song-id',s.id);safeText('admin-song-lbl-title',s.title);safeText('admin-song-lbl-artist',s.artist);safeValue('admin-song-status',s.status);safeValue('admin-song-feedback',s.feedback||'');openModal('admin-song-modal');}
 function closeAdminSongModal(){closeModal('admin-song-modal');}
 async function saveSongStatus(){if(!(await requireAdmin()))return;const id=document.getElementById('admin-song-id').value;const status=document.getElementById('admin-song-status').value;const feedback=document.getElementById('admin-song-feedback').value.trim();const {data,error}=await sb.from('songs').update({status,feedback,updated_at:new Date().toISOString()}).eq('id',id).select('*').single();if(error){showToast('บันทึกคิวเพลงไม่สำเร็จ: '+error.message,'error');return;}const i=db.songs.findIndex(x=>x.id===id);if(i>=0)db.songs[i]=mapSong(data);closeAdminSongModal();renderAdminSongs();showToast('อัปเดตสถานะเพลงแล้ว','success');}
 async function clearPlayedSongs(){if(!(await requireAdmin()))return;if(!confirm('ล้างเพลงที่เปิดแล้วทั้งหมดหรือไม่?'))return;const {error}=await sb.from('songs').delete().eq('status','played');if(error){showToast('ล้างเพลงไม่สำเร็จ: '+error.message,'error');return;}await refreshRemoteSongs();renderAdminSongs();showToast('ล้างเพลงที่เปิดแล้วแล้ว','success');}
 
 /* -------------------- admin lost & found -------------------- */
-async function renderAdminLostFound(){if(!(await requireAdmin()))return;try{await refreshRemoteLostFound();}catch(e){console.error(e);}let items=[...(db.lostFound||[])];const status=document.getElementById('admin-lf-filter-status')?.value||'all';const type=document.getElementById('admin-lf-filter-type')?.value||'all';const cat=document.getElementById('admin-lf-filter-category')?.value||'all';const q=(document.getElementById('admin-lf-search')?.value||'').toLowerCase();if(status!=='all')items=items.filter(x=>x.status===status);if(type!=='all')items=items.filter(x=>x.type===type);if(cat!=='all')items=items.filter(x=>x.category===cat);if(q)items=items.filter(x=>`${x.itemName} ${x.reporterName} ${x.location}`.toLowerCase().includes(q));const tbody=document.getElementById('admin-lf-table-body');if(!tbody)return;tbody.innerHTML=items.map(i=>`<tr><td class="p-4">${i.imageUrl?`<img src="${scEscape(i.imageUrl)}" class="w-16 h-12 object-cover rounded-lg">`:'-'}</td><td class="p-4">${i.type==='lost'?'ของหาย':'เก็บได้'}</td><td class="p-4">${scEscape(i.category)}</td><td class="p-4 font-bold">${scEscape(i.itemName)}</td><td class="p-4">${scEscape(i.classroom)}<br><span class="text-slate-400">${scEscape(i.location)}</span></td><td class="p-4">${scEscape(i.reporterName)}<br><span class="text-slate-400">${scEscape(i.datetime)}</span></td><td class="p-4">${scEscape(i.status)}</td><td class="p-4">${i.pinned?'📌':'-'}</td><td class="p-4 text-right"><button onclick="openAdminLostFoundModal('${i.id}')" class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg">จัดการ</button></td></tr>`).join('')||'<tr><td colspan="9" class="p-10 text-center text-slate-400">ไม่พบรายการ</td></tr>';}
-function openAdminLostFoundModal(id){const i=(db.lostFound||[]).find(x=>x.id===id);if(!i)return;safeValue('admin-lf-id',i.id);safeText('admin-lf-lbl-type',i.type==='lost'?'ของหาย':'เก็บได้');safeText('admin-lf-lbl-name',i.itemName);safeText('admin-lf-lbl-location',i.location);safeText('admin-lf-lbl-category',i.category);safeText('admin-lf-lbl-datetime',i.datetime);safeText('admin-lf-lbl-reporter',`${i.reporterName} (${i.studentId})`);safeText('admin-lf-lbl-desc',i.description||'-');safeText('admin-lf-lbl-contact',i.contact);safeValue('admin-lf-status',i.status);safeValue('admin-lf-resdate',i.resolutionDate||'');safeValue('admin-lf-notes',i.notes||'');const pin=document.getElementById('admin-lf-pinned');if(pin)pin.checked=!!i.pinned;const img=document.getElementById('admin-lf-img');const box=document.getElementById('admin-lf-img-container');if(img&&box){if(i.imageUrl){img.src=i.imageUrl;box.classList.remove('hidden');}else{box.classList.add('hidden');}}openModal('admin-lostfound-modal');}
+async function renderAdminLostFound(){if(!(await requireAdmin()))return;try{await refreshRemoteLostFound();}catch(e){console.error(e);}let items=[...(db.lostFound||[])];const status=document.getElementById('admin-lf-filter-status')?.value||'all';const type=document.getElementById('admin-lf-filter-type')?.value||'all';const cat=document.getElementById('admin-lf-filter-category')?.value||'all';const q=(document.getElementById('admin-lf-search')?.value||'').toLowerCase();if(status!=='all')items=items.filter(x=>x.status===status);if(type!=='all')items=items.filter(x=>x.type===type);if(cat!=='all')items=items.filter(x=>x.category===cat);if(q)items=items.filter(x=>`${x.itemName} ${x.reporterName} ${x.location}`.toLowerCase().includes(q));const tbody=document.getElementById('admin-lf-table-body');if(!tbody)return;tbody.innerHTML=items.map(i=>`<tr><td class="p-4">${i.imageUrl?`<img src="${scEscape(i.imageUrl)}" class="w-16 h-12 object-cover rounded-lg">`:'-'}</td><td class="p-4">${typeBadge(i.type)}</td><td class="p-4">${scEscape(lfCategoryLabel(i.category))}</td><td class="p-4 font-bold">${scEscape(i.itemName)}</td><td class="p-4">${scEscape(i.classroom)}<br><span class="text-slate-400">${scEscape(i.location)}</span></td><td class="p-4">${scEscape(i.reporterName)}<br><span class="text-slate-400">${scEscape(i.datetime)}</span></td><td class="p-4">${statusBadge('lf', i.status)}</td><td class="p-4">${i.pinned?'📌':'-'}</td><td class="p-4 text-right"><button onclick="openAdminLostFoundModal('${i.id}')" class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg">จัดการ</button></td></tr>`).join('')||'<tr><td colspan="9" class="p-10 text-center text-slate-400">ไม่พบรายการ</td></tr>';}
+function openAdminLostFoundModal(id){const i=(db.lostFound||[]).find(x=>x.id===id);if(!i)return;safeValue('admin-lf-id',i.id);safeText('admin-lf-lbl-type',i.type==='lost'?'ของหาย':'เก็บได้');safeText('admin-lf-lbl-name',i.itemName);safeText('admin-lf-lbl-location',i.location);safeText('admin-lf-lbl-category',lfCategoryLabel(i.category));safeText('admin-lf-lbl-datetime',i.datetime);safeText('admin-lf-lbl-reporter',`${i.reporterName} (${i.studentId})`);safeText('admin-lf-lbl-desc',i.description||'-');safeText('admin-lf-lbl-contact',i.contact);safeValue('admin-lf-status',i.status);safeValue('admin-lf-resdate',i.resolutionDate||'');safeValue('admin-lf-notes',i.notes||'');const pin=document.getElementById('admin-lf-pinned');if(pin)pin.checked=!!i.pinned;const img=document.getElementById('admin-lf-img');const box=document.getElementById('admin-lf-img-container');if(img&&box){if(i.imageUrl){img.src=i.imageUrl;box.classList.remove('hidden');}else{box.classList.add('hidden');}}openModal('admin-lostfound-modal');}
 function closeAdminLostFoundModal(){closeModal('admin-lostfound-modal');}
 async function saveAdminLostFoundStatus(){if(!(await requireAdmin()))return;const id=document.getElementById('admin-lf-id').value;const payload={status:document.getElementById('admin-lf-status').value,resolution_date:document.getElementById('admin-lf-resdate').value||null,notes:document.getElementById('admin-lf-notes').value.trim(),pinned:document.getElementById('admin-lf-pinned').checked,updated_at:new Date().toISOString()};const {data,error}=await sb.from('lost_found').update(payload).eq('id',id).select('*').single();if(error){showToast('บันทึกของหายไม่สำเร็จ: '+error.message,'error');return;}const idx=db.lostFound.findIndex(x=>x.id===id);if(idx>=0)db.lostFound[idx]=mapLostFound(data);closeAdminLostFoundModal();renderAdminLostFound();renderStudentLostFound();showToast('อัปเดตของหายแล้ว','success');}
 
 /* -------------------- admin dashboard -------------------- */
-async function renderAdminDashboard(){if(!(await requireAdmin()))return;try{await Promise.all([refreshRemoteReports(),refreshRemoteSongs(),refreshRemoteLostFound()]);}catch(e){console.error(e);}const r=db.reports||[];safeText('admin-kpi-reports',r.length);safeText('admin-kpi-completed',r.filter(x=>x.status==='completed').length);safeText('admin-kpi-processing',r.filter(x=>x.status==='processing'||x.status==='pending').length);const tbody=document.getElementById('admin-recent-reports-table');if(tbody)tbody.innerHTML=r.slice(0,5).map(x=>`<tr><td class="p-3">${scEscape(x.title)}</td><td class="p-3">${scEscape(x.reporterName)}</td><td class="p-3">${scEscape(x.status)}</td><td class="p-3 text-right"><button onclick="openReportDetailModal('${x.id}')" class="px-3 py-1 bg-blue-600 text-white rounded-lg">ดู</button></td></tr>`).join('');}
+async function renderAdminDashboard(){if(!(await requireAdmin()))return;try{await Promise.all([refreshRemoteReports(),refreshRemoteSongs(),refreshRemoteLostFound(),refreshRemoteUsers()]);}catch(e){console.error(e);}const r=db.reports||[];safeText('admin-kpi-users',(db.users||[]).filter(u=>u.role==='student').length);safeText('admin-kpi-reports',r.length);safeText('admin-kpi-completed',r.filter(x=>x.status==='completed').length);safeText('admin-kpi-processing',r.filter(x=>x.status==='processing'||x.status==='pending').length);renderAdminCharts(r);const tbody=document.getElementById('admin-recent-reports-table');if(tbody)tbody.innerHTML=r.slice(0,5).map(x=>`<tr><td class="p-3">${scEscape(x.title)}</td><td class="p-3">${scEscape(x.reporterName)}</td><td class="p-3">${statusBadge('report',x.status)}</td><td class="p-3 text-right"><button onclick="openReportDetailModal('${x.id}')" class="px-3 py-1 bg-blue-600 text-white rounded-lg">ดู</button></td></tr>`).join('');}
 
 function debounce(fn, delay = 180) {
   let timer = null;
@@ -2177,7 +2269,7 @@ const renderAdminChatDebounced = debounce(() => {
 }, 180);
 
 /* -------------------- admin report save/open using remote state -------------------- */
-function openReportDetailModal(id){const r=(db.reports||[]).find(item=>item.id===id);if(!r)return;safeText('report-detail-title',r.title);safeText('report-detail-classroom',r.classroom);safeText('report-detail-category',r.category);safeText('report-detail-location',r.location);safeText('report-detail-datetime',(r.datetime||'').replace('T',' '));safeText('report-detail-desc',r.description||'-');safeText('report-detail-resdate',r.resolutionDate||'-');safeText('report-detail-notes',r.notes||'- ไม่มีข้อมูลบันทึกเพิ่มเติม -');renderReportDetailPhotos(r.photos);const badge=document.getElementById('report-detail-badge');if(badge){badge.innerText=(r.status||'').toUpperCase();badge.className=`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase ${r.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : r.status === 'processing' ? 'bg-amber-100 text-amber-700' : r.status === 'failed' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-700'}`;}const adminSec=document.getElementById('admin-actions-section');const saveBtn=document.getElementById('admin-save-report-btn');if(currentRole==='admin'){adminSec?.classList.remove('hidden');saveBtn?.classList.remove('hidden');safeValue('admin-action-status',r.status);safeValue('admin-action-resdate',r.resolutionDate||'');safeValue('admin-action-notes',r.notes||'');saveBtn?.setAttribute('data-id',r.id);}else{adminSec?.classList.add('hidden');saveBtn?.classList.add('hidden');}openModal('report-detail-modal');}
+function openReportDetailModal(id){const r=(db.reports||[]).find(item=>item.id===id);if(!r)return;safeText('report-detail-title',r.title);safeText('report-detail-classroom',r.classroom);safeText('report-detail-category',r.category);safeText('report-detail-location',r.location);safeText('report-detail-datetime',(r.datetime||'').replace('T',' '));safeText('report-detail-desc',r.description||'-');safeText('report-detail-resdate',r.resolutionDate||'-');safeText('report-detail-notes',r.notes||'- ไม่มีข้อมูลบันทึกเพิ่มเติม -');renderReportDetailPhotos(r.photos);const badge=document.getElementById('report-detail-badge');if(badge){badge.className='';badge.innerHTML=statusBadge('report',r.status);}const adminSec=document.getElementById('admin-actions-section');const saveBtn=document.getElementById('admin-save-report-btn');if(currentRole==='admin'){adminSec?.classList.remove('hidden');saveBtn?.classList.remove('hidden');safeValue('admin-action-status',r.status);safeValue('admin-action-resdate',r.resolutionDate||'');safeValue('admin-action-notes',r.notes||'');saveBtn?.setAttribute('data-id',r.id);}else{adminSec?.classList.add('hidden');saveBtn?.classList.add('hidden');}openModal('report-detail-modal');}
 
 /* -------------------- init + realtime -------------------- */
 let scRealtimeChannel = null;
@@ -2284,3 +2376,300 @@ if (document.readyState === 'loading') {
   initLostFoundImageUploader();
   initApp();
 }
+
+
+/**
+ * SCLRP Motion Layer — โหลดต่อจาก app.js
+ * เพิ่ม animation / micro-interaction โดยไม่แก้ logic เดิมของระบบ
+ */
+(() => {
+  'use strict';
+
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  const main = document.querySelector('main');
+  let lastSwitchAt = 0;
+
+  /* ---------- 1. แถบความคืบหน้าการเลื่อนหน้า ---------- */
+  const progressBar = document.createElement('div');
+  progressBar.id = 'sc-scroll-progress';
+  progressBar.setAttribute('aria-hidden', 'true');
+  document.body.appendChild(progressBar);
+
+  let progressTicking = false;
+  function updateProgress() {
+    progressTicking = false;
+    if (!main) return;
+    const max = main.scrollHeight - main.clientHeight;
+    progressBar.style.transform = `scaleX(${max > 0 ? main.scrollTop / max : 0})`;
+  }
+  main?.addEventListener('scroll', () => {
+    if (!progressTicking) {
+      progressTicking = true;
+      requestAnimationFrame(updateProgress);
+    }
+  }, { passive: true });
+
+  /* ---------- 2. ตัวเลขนับขึ้น ---------- */
+  const COUNT_IDS = [
+    'pub-stat-total', 'pub-stat-completed', 'pub-stat-processing', 'pub-stat-failed',
+    'pub-success-percent', 'pub-success-count', 'pub-failed-count',
+    'admin-kpi-users', 'admin-kpi-reports', 'admin-kpi-completed', 'admin-kpi-processing',
+    'student-news-count', 'student-songs-count', 'lost-count', 'found-count'
+  ];
+
+  function animateCount(el, force = false) {
+    const finalText = el.textContent.trim();
+    if (!force && finalText === el._scWritten) return;
+    const match = finalText.match(/^(-?\d+(?:\.\d+)?)([\s\S]*)$/);
+    if (!match) { el._scValue = 0; return; }
+
+    const to = parseFloat(match[1]);
+    const suffix = match[2];
+    const from = typeof el._scValue === 'number' ? el._scValue : 0;
+    el._scValue = to;
+    cancelAnimationFrame(el._scRaf);
+
+    if (reduceMotion || from === to || !el.offsetParent) {
+      el._scWritten = finalText;
+      return;
+    }
+
+    const isInt = Number.isInteger(to) && Number.isInteger(from);
+    const format = value => (isInt ? Math.round(value) : value.toFixed(1)) + suffix;
+    const write = text => { el._scWritten = text; el.textContent = text; };
+    const duration = 900;
+    const start = performance.now();
+
+    write(format(from));
+    const step = now => {
+      const p = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      if (p < 1) {
+        write(format(from + (to - from) * eased));
+        el._scRaf = requestAnimationFrame(step);
+      } else {
+        write(finalText);
+      }
+    };
+    el._scRaf = requestAnimationFrame(step);
+  }
+
+  COUNT_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    new MutationObserver(() => animateCount(el)).observe(el, { childList: true, characterData: true, subtree: true });
+  });
+
+  function replayCounts(section) {
+    COUNT_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el || !section.contains(el)) return;
+      el._scValue = 0;
+      animateCount(el, true);
+    });
+  }
+
+  /* ---------- 3. รายการ dynamic: ไล่ขึ้นทีละรายการ + การ์ดยกตัว ---------- */
+  const LIST_IDS = [
+    'pub-achievements-grid', 'pub-recent-reports', 'student-news-grid', 'student-links-container',
+    'student-track-list', 'student-songs-list', 'lost-items-list', 'found-items-list',
+    'student-chat-list', 'admin-chat-list', 'admin-chat-session-list', 'image-previews',
+    'admin-all-reports-table', 'admin-recent-reports-table', 'admin-news-table-body',
+    'admin-links-table-body', 'admin-achievements-table-body', 'admin-songs-table-body', 'admin-lf-table-body'
+  ];
+  const LIFT_IDS = new Set([
+    'pub-achievements-grid', 'student-news-grid', 'student-track-list',
+    'student-songs-list', 'lost-items-list', 'found-items-list'
+  ]);
+
+  const keyOf = el => (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 140);
+
+  function clearStaggerWhenDone(el) {
+    const onEnd = event => {
+      if (event.target !== el) return;
+      el.classList.remove('sc-stagger');
+      el.removeEventListener('animationend', onEnd);
+    };
+    el.addEventListener('animationend', onEnd);
+  }
+
+  function processList(container) {
+    const previousKeys = container._scKeys || null;
+    const animateAll = !previousKeys || Date.now() - lastSwitchAt < 1200;
+    const nextKeys = new Set();
+    let order = 0;
+
+    Array.from(container.children).forEach(child => {
+      const key = keyOf(child);
+      nextKeys.add(key);
+      if (LIFT_IDS.has(container.id)) child.classList.add('sc-lift');
+      if (reduceMotion) return;
+      if (animateAll || !previousKeys.has(key)) {
+        child.style.setProperty('--sc-i', Math.min(order++, 12));
+        child.classList.add('sc-stagger');
+        clearStaggerWhenDone(child);
+      }
+    });
+    container._scKeys = nextKeys;
+  }
+
+  LIST_IDS.forEach(id => {
+    const container = document.getElementById(id);
+    if (!container) return;
+    new MutationObserver(() => processList(container)).observe(container, { childList: true });
+    if (container.children.length) processList(container);
+  });
+
+  document.querySelectorAll(
+    '#view-public-achievements > .grid.grid-cols-2 > div, #view-admin-dashboard > .grid.grid-cols-2 > div, .public-mini-card, .public-welcome-card'
+  ).forEach(card => card.classList.add('sc-lift'));
+
+  /* ---------- 4. ไฟส่องตามเมาส์บนการ์ด ---------- */
+  if (finePointer && !reduceMotion) {
+    document.addEventListener('pointermove', event => {
+      const card = event.target.closest?.('.sc-lift');
+      if (!card) return;
+      const rect = card.getBoundingClientRect();
+      card.style.setProperty('--mx', `${event.clientX - rect.left}px`);
+      card.style.setProperty('--my', `${event.clientY - rect.top}px`);
+    }, { passive: true });
+  }
+
+  /* ---------- 5. Ripple เวลากดปุ่ม ---------- */
+  document.addEventListener('pointerdown', event => {
+    if (reduceMotion || event.button !== 0) return;
+    const host = event.target.closest?.('button, .sidebar-link');
+    if (!host || host.disabled || host.classList.contains('no-ripple')) return;
+
+    const style = getComputedStyle(host);
+    if (style.position === 'static') host.style.position = 'relative';
+    if (style.overflow === 'visible') host.style.overflow = 'hidden';
+
+    const rect = host.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height) * 2.2;
+    const ripple = document.createElement('sc-ripple');
+    ripple.style.width = ripple.style.height = `${size}px`;
+    ripple.style.left = `${event.clientX - rect.left - size / 2}px`;
+    ripple.style.top = `${event.clientY - rect.top - size / 2}px`;
+    host.appendChild(ripple);
+    const remove = () => ripple.remove();
+    ripple.addEventListener('animationend', remove, { once: true });
+    setTimeout(remove, 900);
+  }, { passive: true });
+
+  /* ---------- 6. Toast ค่อย ๆ หายไป ---------- */
+  const toastHost = document.getElementById('app-toast');
+  if (toastHost) {
+    new MutationObserver(mutations => {
+      mutations.forEach(m => m.addedNodes.forEach(node => {
+        if (node.nodeType === 1 && node.classList.contains('toast-item')) {
+          setTimeout(() => node.classList.add('is-leaving'), 3650);
+        }
+      }));
+    }).observe(toastHost, { childList: true });
+  }
+
+  /* ---------- 7. รูปภาพ fade-in เมื่อโหลดเสร็จ ---------- */
+  function prepareImage(img) {
+    if (img._scImg || reduceMotion) return;
+    img._scImg = true;
+    if (img.complete && img.naturalWidth) return;
+    img.classList.add('sc-img');
+    const done = () => img.classList.add('is-loaded');
+    img.addEventListener('load', done, { once: true });
+    img.addEventListener('error', done, { once: true });
+  }
+
+  if (main) {
+    new MutationObserver(mutations => {
+      mutations.forEach(m => m.addedNodes.forEach(node => {
+        if (node.nodeType !== 1) return;
+        if (node.tagName === 'IMG') prepareImage(node);
+        node.querySelectorAll?.('img').forEach(prepareImage);
+      }));
+    }).observe(main, { childList: true, subtree: true });
+  }
+
+  /* ---------- 8. หัวข้อหน้าเปลี่ยนแบบนุ่ม ---------- */
+  const headerTitle = document.getElementById('page-header-title');
+  function replayClass(el, cls) {
+    el.classList.remove(cls);
+    void el.offsetWidth;
+    el.classList.add(cls);
+  }
+  if (headerTitle && !reduceMotion) {
+    new MutationObserver(() => replayClass(headerTitle, 'sc-title-in'))
+      .observe(headerTitle, { childList: true, characterData: true, subtree: true });
+  }
+
+  /* ---------- 9. กล่อง error หน้า login สั่น ---------- */
+  const loginError = document.getElementById('login-error');
+  if (loginError && !reduceMotion) {
+    const shake = () => { if (!loginError.classList.contains('hidden')) replayClass(loginError, 'sc-shake'); };
+    new MutationObserver(shake).observe(loginError, { attributes: true, attributeFilter: ['class'], childList: true, characterData: true, subtree: true });
+  }
+
+  /* ---------- 10. ลำดับเมนู (ใช้ไล่ animation ในเมนูมือถือ) ---------- */
+  document.querySelectorAll('#sidebar nav .sidebar-link').forEach((link, index) => {
+    link.style.setProperty('--sc-n', index);
+  });
+
+  /* ---------- 11. ห่อ switchTab: เล่น transition ทุกครั้งที่เปลี่ยนหน้า ---------- */
+  const originalSwitchTab = window.switchTab;
+  if (typeof originalSwitchTab === 'function') {
+    window.switchTab = function (tabId) {
+      lastSwitchAt = Date.now();
+      const result = originalSwitchTab.apply(this, arguments);
+      const section = document.getElementById(`view-${tabId}`);
+
+      if (section && !reduceMotion) {
+        Array.from(section.children).forEach((child, index) => child.style.setProperty('--sc-c', Math.min(index, 8)));
+        replayClass(section, 'sc-entering');
+        clearTimeout(section._scEnterTimer);
+        section._scEnterTimer = setTimeout(() => section.classList.remove('sc-entering'), 1400);
+        replayCounts(section);
+        document.querySelectorAll('#sidebar .sidebar-link.active').forEach(link => replayClass(link, 'sc-pop'));
+      }
+
+      progressBar.style.transform = 'scaleX(0)';
+      return result;
+    };
+  }
+
+  /* ---------- 12. เปลี่ยนธีมแบบนุ่ม + จำธีมไว้ ---------- */
+  const originalToggleDark = window.toggleDarkMode;
+  if (typeof originalToggleDark === 'function') {
+    window.toggleDarkMode = function () {
+      const html = document.documentElement;
+      html.classList.add('sc-theme-fade');
+      const result = originalToggleDark.apply(this, arguments);
+      try { localStorage.setItem('sc_theme', html.classList.contains('dark') ? 'dark' : 'light'); } catch (e) {}
+      clearTimeout(html._scThemeTimer);
+      html._scThemeTimer = setTimeout(() => html.classList.remove('sc-theme-fade'), 500);
+      return result;
+    };
+    try {
+      if (localStorage.getItem('sc_theme') === 'dark' && !document.documentElement.classList.contains('dark')) {
+        originalToggleDark();
+      }
+    } catch (e) {}
+  }
+
+  /* ---------- 13. กราฟ Chart.js ให้เข้ากับธีม ---------- */
+  if (window.Chart?.defaults) {
+    const d = window.Chart.defaults;
+    d.font.family = "'Kanit', sans-serif";
+    d.animation = Object.assign({}, d.animation, { duration: reduceMotion ? 0 : 1100, easing: 'easeOutQuart' });
+    if (d.plugins?.tooltip) {
+      Object.assign(d.plugins.tooltip, {
+        backgroundColor: 'rgba(16,37,77,.92)',
+        titleColor: '#f7d96d',
+        bodyColor: '#ffffff',
+        padding: 10,
+        cornerRadius: 10,
+        displayColors: false
+      });
+    }
+  }
+})();

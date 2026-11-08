@@ -22,7 +22,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <!-- Custom Styles -->
-  <link rel="stylesheet" href="styles.css?v=20261031-SMOOTH-NAV-1">
+  <link rel="stylesheet" href="styles.css?v=20261108-UI-2">
 
   <script>
     tailwind.config = {
@@ -1516,10 +1516,10 @@
         </button>
       </div>
       <div class="px-6 pt-5">
-        <div class="flex flex-wrap gap-2 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 p-2">
-          <button type="button" onclick="openLostFoundModal('lost')" class="flex-1 px-3 py-2 rounded-xl text-xs font-bold bg-rose-600 text-white shadow-sm">แจ้งของหาย</button>
-          <button type="button" onclick="openLostFoundModal('found')" class="flex-1 px-3 py-2 rounded-xl text-xs font-bold bg-emerald-600 text-white shadow-sm">แจ้งเก็บได้</button>
-          <button type="button" onclick="openLostFoundModal('money')" class="flex-1 px-3 py-2 rounded-xl text-xs font-bold bg-amber-600 text-white shadow-sm">แจ้งเงินหาย/เก็บเงินได้</button>
+        <div class="sc-seg" role="group" aria-label="ประเภทการแจ้ง">
+          <button type="button" data-lf-type="lost" onclick="openLostFoundModal('lost')" class="sc-seg-btn"><i class="fa-solid fa-magnifying-glass"></i>แจ้งของหาย</button>
+          <button type="button" data-lf-type="found" onclick="openLostFoundModal('found')" class="sc-seg-btn"><i class="fa-solid fa-hand-holding-heart"></i>แจ้งเก็บได้</button>
+          <button type="button" data-lf-type="money" onclick="openLostFoundModal('money')" class="sc-seg-btn"><i class="fa-solid fa-coins"></i>เงินหาย / เก็บเงินได้</button>
         </div>
       </div>
       <form id="form-lostfound-report" onsubmit="event.preventDefault(); submitLostFoundReport();" class="p-6 space-y-4 text-xs">
@@ -1703,6 +1703,6 @@
 <script src="data.js?v=20260804-1"></script>
 
 <!-- Main -->
-<script src="app.js?v=20261031-STABILITY-3"></script>
+<script src="app.js?v=20261108-UI-2"></script>
 </body>
 </html>

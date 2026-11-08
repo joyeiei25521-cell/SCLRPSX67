@@ -3906,3 +3906,869 @@ body:not(.login-shell) .school-emblem-backdrop {
     opacity: .1;
   }
 }
+
+
+/* ==========================================================================
+   SCLRP Unified UI — ระบบดีไซน์ชุดเดียวทั้งเว็บ
+   โหลดต่อจาก styles.css และก่อน motion.css
+   หลักการ: น้ำเงินกรมท่า = การกระทำหลัก, ทอง = จุดเน้น, สีเขียว/เหลือง/แดง = สถานะเท่านั้น
+   ========================================================================== */
+
+:root {
+  --ui-navy: #10254d;
+  --ui-navy-2: #173b78;
+  --ui-blue: #2456a6;
+  --ui-blue-2: #3475ce;
+  --ui-blue-soft: #eaf1fc;
+  --ui-gold: #f1c644;
+  --ui-gold-2: #f7d96d;
+  --ui-gold-soft: #fff7db;
+  --ui-gold-ink: #8a6508;
+
+  --ui-success: #15803d;
+  --ui-success-soft: #e8f6ee;
+  --ui-warning: #a16207;
+  --ui-warning-soft: #fff4d6;
+  --ui-danger: #be123c;
+  --ui-danger-soft: #fdecef;
+  --ui-info: #2456a6;
+  --ui-info-soft: #eaf1fc;
+  --ui-neutral: #53647d;
+  --ui-neutral-soft: #eef2f7;
+
+  --ui-ink: #17243b;
+  --ui-muted: #68778e;
+  --ui-line: rgba(36, 67, 117, .12);
+  --ui-surface: #ffffff;
+  --ui-surface-2: #f5f8fc;
+
+  --ui-r-xl: 1.5rem;
+  --ui-r-lg: 1.25rem;
+  --ui-r-md: .85rem;
+  --ui-r-sm: .6rem;
+  --ui-shadow: 0 10px 28px -20px rgba(16, 37, 77, .28), 0 2px 8px rgba(16, 37, 77, .04);
+  --ui-primary: linear-gradient(115deg, #2456a6, #173b78);
+  --ui-primary-shadow: inset 0 -2px 0 #f1c644, 0 8px 18px -12px rgba(23, 59, 120, .7);
+}
+
+.dark {
+  --ui-ink: #e8eef8;
+  --ui-muted: #9cabc0;
+  --ui-line: rgba(170, 193, 226, .14);
+  --ui-surface: #14233c;
+  --ui-surface-2: #0f1d33;
+  --ui-blue-soft: rgba(52, 117, 206, .18);
+  --ui-gold-soft: rgba(241, 198, 68, .14);
+  --ui-gold-ink: #f1c644;
+  --ui-success: #4ade80;
+  --ui-success-soft: rgba(34, 197, 94, .14);
+  --ui-warning: #fbbf24;
+  --ui-warning-soft: rgba(245, 158, 11, .14);
+  --ui-danger: #fb7185;
+  --ui-danger-soft: rgba(244, 63, 94, .14);
+  --ui-info: #a9c8f4;
+  --ui-info-soft: rgba(52, 117, 206, .18);
+  --ui-neutral: #b6c3d6;
+  --ui-neutral-soft: rgba(148, 163, 184, .14);
+}
+
+/* ---------- 1. ตัวอักษร: เลิกใช้ตัวพิมพ์ใหญ่/ระยะห่างแบบอังกฤษกับข้อความไทย ---------- */
+body:not(.login-shell) :is(main, .modal-panel) .uppercase {
+  text-transform: none !important;
+  letter-spacing: .005em !important;
+}
+
+body:not(.login-shell) :is(main, .modal-panel) label:not(.flex):not(.inline-flex) {
+  color: var(--ui-muted) !important;
+  font-size: .74rem !important;
+  font-weight: 600 !important;
+}
+
+body:not(.login-shell) main > section h2.uppercase {
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  color: var(--ui-ink) !important;
+  font-size: .95rem !important;
+  font-weight: 800 !important;
+}
+
+body:not(.login-shell) main > section h2.uppercase::before {
+  content: '';
+  width: 4px;
+  height: 1.1em;
+  border-radius: 4px;
+  background: var(--ui-gold);
+}
+
+/* ---------- 2. ปุ่ม: หลัก / รอง / อันตราย ---------- */
+body:not(.login-shell) main button:is([class*="from-blue-"], [class*="from-indigo-"], [class*="from-emerald-"], [class*="from-teal-"], [class*="from-amber-"], [class*="from-yellow-"], [class*="bg-blue-6"], [class*="bg-blue-7"], [class*="bg-indigo-"], [class*="bg-emerald-6"], [class*="bg-teal-"], [class*="bg-amber-5"], [class*="bg-amber-6"], [class*="bg-yellow-5"], [class*="bg-slate-800"]),
+body:not(.login-shell) .modal-panel button:is([class*="from-blue-"], [class*="from-indigo-"], [class*="from-emerald-"], [class*="from-teal-"], [class*="from-amber-"], [class*="from-yellow-"], [class*="bg-blue-6"], [class*="bg-blue-7"], [class*="bg-indigo-"], [class*="bg-emerald-6"], [class*="bg-teal-"], [class*="bg-amber-5"], [class*="bg-amber-6"], [class*="bg-yellow-5"], [class*="bg-slate-800"]) {
+  border: 1px solid transparent !important;
+  border-radius: var(--ui-r-md) !important;
+  background: var(--ui-primary) !important;
+  color: #fff !important;
+  box-shadow: var(--ui-primary-shadow) !important;
+  font-weight: 700 !important;
+}
+
+body:not(.login-shell) :is(main, .modal-panel) button:is([class*="from-blue-"], [class*="from-indigo-"], [class*="from-emerald-"], [class*="from-teal-"], [class*="from-amber-"], [class*="from-yellow-"], [class*="bg-blue-6"], [class*="bg-blue-7"], [class*="bg-indigo-"], [class*="bg-emerald-6"], [class*="bg-teal-"], [class*="bg-amber-5"], [class*="bg-amber-6"], [class*="bg-yellow-5"], [class*="bg-slate-800"]):hover {
+  filter: brightness(1.1);
+}
+
+body:not(.login-shell) :is(main, .modal-panel) button:is([class*="bg-rose-6"], [class*="bg-rose-7"]) {
+  border: 1px solid transparent !important;
+  border-radius: var(--ui-r-md) !important;
+  background: var(--ui-danger) !important;
+  color: #fff !important;
+  box-shadow: 0 8px 18px -12px rgba(190, 18, 60, .7) !important;
+}
+
+.dark body:not(.login-shell) :is(main, .modal-panel) button:is([class*="bg-rose-6"], [class*="bg-rose-7"]) {
+  background: #be123c !important;
+}
+
+body:not(.login-shell) :is(main, .modal-panel) button[class*="border-slate-200"]:not([class*=" bg-"]):not([class^="bg-"]) {
+  border: 1px solid var(--ui-line) !important;
+  border-radius: var(--ui-r-md) !important;
+  background: var(--ui-surface) !important;
+  color: var(--ui-ink) !important;
+  box-shadow: none !important;
+}
+
+body:not(.login-shell) :is(main, .modal-panel) button[class*="border-slate-200"]:not([class*=" bg-"]):not([class^="bg-"]):hover {
+  border-color: rgba(52, 117, 206, .45) !important;
+  color: var(--ui-blue) !important;
+}
+
+body:not(.login-shell) main table td button {
+  border-radius: var(--ui-r-sm) !important;
+  font-size: .7rem !important;
+  margin-block: .15rem;
+}
+
+/* ปุ่มแนบรูปในแชท */
+body:not(.login-shell) main label[for$="chat-file-input"] {
+  border: 1px solid var(--ui-line) !important;
+  border-radius: var(--ui-r-md) !important;
+  background: var(--ui-surface) !important;
+  color: var(--ui-ink) !important;
+}
+
+/* ---------- 3. ไอคอน: สีเดียวกันทั้งระบบ ---------- */
+#sidebar .sidebar-link > i {
+  color: currentColor !important;
+  opacity: .85;
+}
+
+#sidebar .sidebar-link.active > i {
+  color: var(--ui-blue) !important;
+  opacity: 1;
+}
+
+.dark #sidebar .sidebar-link.active > i {
+  color: var(--ui-gold) !important;
+}
+
+body:not(.login-shell) :is(main, .modal-panel) i:is([class*="text-emerald-"], [class*="text-teal-"], [class*="text-indigo-"], [class*="text-amber-4"], [class*="text-amber-5"], [class*="text-blue-5"]) {
+  color: var(--ui-blue) !important;
+}
+
+.dark body:not(.login-shell) :is(main, .modal-panel) i:is([class*="text-emerald-"], [class*="text-teal-"], [class*="text-indigo-"], [class*="text-amber-4"], [class*="text-amber-5"], [class*="text-blue-5"]) {
+  color: var(--ui-gold) !important;
+}
+
+/* ---------- 4. การ์ดสถิติ: ไอคอนกล่องเดียวกัน สีตามความหมาย ---------- */
+body:not(.login-shell) main :is(#view-public-achievements, #view-admin-dashboard) > .grid.grid-cols-2 > div > div:first-child {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  flex: 0 0 3rem;
+  place-items: center;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: .9rem !important;
+  background: var(--ui-blue-soft) !important;
+  color: var(--ui-blue) !important;
+}
+
+body:not(.login-shell) main :is(#view-public-achievements, #view-admin-dashboard) > .grid.grid-cols-2 > div > div:first-child i {
+  font-size: 1.2rem !important;
+}
+
+body:not(.login-shell) main :is(#view-public-achievements, #view-admin-dashboard) > .grid.grid-cols-2 > div:has(:is(#pub-stat-completed, #admin-kpi-completed)) > div:first-child {
+  background: var(--ui-success-soft) !important;
+  color: var(--ui-success) !important;
+}
+
+body:not(.login-shell) main :is(#view-public-achievements, #view-admin-dashboard) > .grid.grid-cols-2 > div:has(:is(#pub-stat-processing, #admin-kpi-processing)) > div:first-child {
+  background: var(--ui-gold-soft) !important;
+  color: var(--ui-gold-ink) !important;
+}
+
+body:not(.login-shell) main :is(#view-public-achievements, #view-admin-dashboard) > .grid.grid-cols-2 > div:has(#pub-stat-failed) > div:first-child {
+  background: var(--ui-danger-soft) !important;
+  color: var(--ui-danger) !important;
+}
+
+body:not(.login-shell) main :is(#view-public-achievements, #view-admin-dashboard) > .grid.grid-cols-2 p {
+  color: var(--ui-muted) !important;
+  font-size: .72rem !important;
+  font-weight: 600 !important;
+}
+
+/* กล่องไอคอนในรายการ (เช่น คิวเพลง) */
+.sc-icon-chip {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border-radius: .9rem;
+  background: var(--ui-gold-soft);
+  color: var(--ui-gold-ink);
+  font-size: 1.15rem;
+}
+
+/* ---------- 5. ป้ายสถานะ: แบบเดียวกันทุกหน้า ---------- */
+.sc-badge,
+:root .public-status {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .3rem .65rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--ui-neutral-soft);
+  color: var(--ui-neutral);
+  font-size: .68rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.sc-badge i,
+:root .public-status i {
+  font-size: .72em;
+}
+
+.sc-badge--success, :root .public-status.done { background: var(--ui-success-soft); color: var(--ui-success); }
+.sc-badge--warning, :root .public-status.working { background: var(--ui-warning-soft); color: var(--ui-warning); }
+.sc-badge--danger, :root .public-status.failed { background: var(--ui-danger-soft); color: var(--ui-danger); }
+.sc-badge--info { background: var(--ui-info-soft); color: var(--ui-info); }
+.sc-badge--neutral, :root .public-status.pending { background: var(--ui-neutral-soft); color: var(--ui-neutral); }
+
+/* ตัวเลขนับจำนวน */
+:is(#student-news-count, #student-songs-count, #lost-count, #found-count) {
+  border: 0 !important;
+  background: var(--ui-navy) !important;
+  color: var(--ui-gold-2) !important;
+}
+
+/* ---------- 6. แท็บกรอง: แบบแคปซูลเดียวกันทุกหน้า ---------- */
+body:not(.login-shell) main > section:not(#view-login) > div.flex.border-b {
+  display: flex !important;
+  width: max-content;
+  max-width: 100%;
+  flex-wrap: nowrap !important;
+  gap: .25rem !important;
+  overflow-x: auto;
+  padding: .3rem;
+  border: 1px solid var(--ui-line) !important;
+  border-radius: 999px;
+  background: var(--ui-surface);
+  box-shadow: var(--ui-shadow);
+  scrollbar-width: none;
+}
+
+body:not(.login-shell) main > section:not(#view-login) > div.flex.border-b::-webkit-scrollbar {
+  display: none;
+}
+
+body:not(.login-shell) main > section:not(#view-login) > div.flex.border-b > button {
+  min-height: 38px !important;
+  flex: 0 0 auto;
+  padding: .45rem 1rem !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: transparent !important;
+  color: var(--ui-muted) !important;
+  box-shadow: none !important;
+  white-space: nowrap;
+}
+
+body:not(.login-shell) main > section:not(#view-login) > div.flex.border-b > button:hover {
+  color: var(--ui-blue) !important;
+  background: var(--ui-blue-soft) !important;
+}
+
+body:not(.login-shell) main > section:not(#view-login) > div.flex.border-b > button.border-blue-600 {
+  background: var(--ui-primary) !important;
+  color: #fff !important;
+  box-shadow: var(--ui-primary-shadow) !important;
+}
+
+@media (max-width: 640px) {
+  body:not(.login-shell) main > section:not(#view-login) > div.flex.border-b {
+    width: 100%;
+    border-radius: 1rem;
+  }
+}
+
+/* ---------- 7. กล่องข้อความแจ้ง ---------- */
+#view-student-links > div:first-child {
+  border: 1px solid var(--ui-line) !important;
+  border-left: 4px solid var(--ui-gold) !important;
+  border-radius: var(--ui-r-lg) !important;
+  background: var(--ui-surface) !important;
+  color: var(--ui-ink) !important;
+  box-shadow: var(--ui-shadow) !important;
+}
+
+#view-student-links > div:first-child > div:first-child {
+  background: var(--ui-primary) !important;
+}
+
+#lf-money-type-section {
+  border-color: rgba(214, 169, 22, .35) !important;
+  border-radius: var(--ui-r-md) !important;
+  background: var(--ui-gold-soft) !important;
+}
+
+#lf-money-type-section label {
+  border-color: var(--ui-line) !important;
+  background: var(--ui-surface) !important;
+  color: var(--ui-ink) !important;
+}
+
+/* หัวคอลัมน์ ของหาย / เก็บได้ */
+#view-student-lostfound > .grid > div > div:first-child {
+  border-radius: var(--ui-r-md) !important;
+}
+
+/* ---------- 8. หน้าต่าง popup ---------- */
+body:not(.login-shell) .modal-panel {
+  border-radius: var(--ui-r-lg) !important;
+  background: var(--ui-surface) !important;
+  color: var(--ui-ink);
+}
+
+body:not(.login-shell) .modal-panel h3,
+body:not(.login-shell) .modal-panel h4 {
+  color: var(--ui-ink) !important;
+}
+
+body:not(.login-shell) .modal-panel > div.border-b,
+body:not(.login-shell) .modal-panel > div.border-t,
+body:not(.login-shell) .modal-panel form > div.border-t {
+  border-color: var(--ui-line) !important;
+  background: var(--ui-surface-2) !important;
+}
+
+body:not(.login-shell) .modal-panel div:is([class*="bg-slate-50"], [class*="bg-blue-50"]) {
+  border-color: var(--ui-line) !important;
+  background: var(--ui-surface-2) !important;
+}
+
+body:not(.login-shell) .modal-panel :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]), select, textarea) {
+  min-height: 44px;
+  padding-top: .6rem !important;
+  padding-bottom: .6rem !important;
+  padding-left: .85rem !important;
+  border: 1px solid var(--ui-line) !important;
+  border-radius: var(--ui-r-md) !important;
+  background-color: var(--ui-surface-2) !important;
+  color: var(--ui-ink) !important;
+  font-size: .82rem;
+}
+
+body:not(.login-shell) .modal-panel :is(input, select, textarea):focus {
+  border-color: rgba(52, 117, 206, .7) !important;
+  outline: 3px solid rgba(241, 198, 68, .28);
+  outline-offset: 1px;
+  box-shadow: none !important;
+}
+
+body:not(.login-shell) .modal-panel button:has(> i.fa-xmark:only-child) {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  place-items: center;
+  padding: 0 !important;
+  border-radius: 999px !important;
+  background: var(--ui-surface-2) !important;
+  color: var(--ui-muted) !important;
+}
+
+body:not(.login-shell) .modal-panel button:has(> i.fa-xmark:only-child):hover {
+  background: var(--ui-blue-soft) !important;
+  color: var(--ui-blue) !important;
+}
+
+/* ตัวเลือกประเภทในฟอร์มของหาย */
+.sc-seg {
+  display: flex;
+  gap: .3rem;
+  padding: .3rem;
+  border: 1px solid var(--ui-line);
+  border-radius: 999px;
+  background: var(--ui-surface-2);
+}
+
+.sc-seg-btn {
+  display: inline-flex;
+  min-height: 40px;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  padding: .45rem .7rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ui-muted);
+  font-size: .72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sc-seg-btn:hover {
+  color: var(--ui-blue);
+}
+
+.sc-seg-btn.is-active {
+  background: var(--ui-primary);
+  color: #fff;
+  box-shadow: var(--ui-primary-shadow);
+}
+
+@media (max-width: 480px) {
+  .sc-seg {
+    flex-direction: column;
+    border-radius: 1rem;
+  }
+}
+
+/* หมวดหมู่ของหาย */
+#lf-category-options button {
+  border-radius: var(--ui-r-md) !important;
+}
+
+#lf-category-options button.border-blue-500 {
+  border-color: var(--ui-blue) !important;
+  background: var(--ui-blue-soft) !important;
+  color: var(--ui-blue) !important;
+  box-shadow: inset 0 -2px 0 var(--ui-gold) !important;
+}
+
+/* ---------- 9. หน้า Login ใช้ปุ่ม/มุมโค้งชุดเดียวกับในระบบ ---------- */
+body.login-shell .login-panel,
+body.login-shell .login-showcase {
+  border-radius: var(--ui-r-xl) !important;
+}
+
+body.login-shell .login-panel input {
+  border-radius: var(--ui-r-md) !important;
+}
+
+body.login-shell .login-panel form button[type="submit"] {
+  border-radius: var(--ui-r-md) !important;
+  color: #fff !important;
+  box-shadow: inset 0 -2px 0 #f1c644, 0 10px 24px rgba(23, 59, 120, .35) !important;
+}
+
+body.login-shell .login-panel form button[type="button"] {
+  border-radius: var(--ui-r-md) !important;
+}
+
+
+/* ==========================================================================
+   SCLRP Motion Layer — โหลดต่อจาก styles.css
+   รวม animation / micro-interaction ทั้งหมดไว้ที่ไฟล์นี้ไฟล์เดียว
+   ========================================================================== */
+
+:root {
+  --sc-ease-out: cubic-bezier(.22, 1, .36, 1);
+  --sc-ease-spring: cubic-bezier(.34, 1.56, .64, 1);
+}
+
+::selection {
+  background: rgba(241, 198, 68, .45);
+  color: #10254d;
+}
+
+/* ---------- Scroll progress bar ---------- */
+#sc-scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1100;
+  height: 3px;
+  pointer-events: none;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, #2456a6, #3475ce 45%, #f1c644);
+  box-shadow: 0 0 12px rgba(241, 198, 68, .55);
+  transition: opacity .3s ease;
+}
+
+body.login-shell #sc-scroll-progress {
+  opacity: 0;
+}
+
+/* ---------- Ripple (ใช้แท็กเฉพาะ เพื่อไม่ชนกับ selector เดิมของ span/i) ---------- */
+sc-ripple {
+  position: absolute;
+  z-index: 0;
+  display: block;
+  margin: 0 !important;
+  border-radius: 50%;
+  pointer-events: none;
+  background: currentColor;
+  opacity: .28;
+  transform: scale(0);
+  animation: scRipple .65s var(--sc-ease-out) forwards;
+}
+
+/* ---------- Toast: แถบเวลานับถอยหลัง + ออกแบบนุ่ม ---------- */
+#app-toast .toast-item {
+  position: relative;
+  overflow: hidden;
+}
+
+#app-toast .toast-item::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 3px;
+  background: rgba(255, 255, 255, .55);
+  transform-origin: left;
+  animation: scToastTimer 4s linear forwards;
+}
+
+#app-toast .toast-item.is-leaving {
+  animation: scToastOut .35s var(--sc-ease-out) forwards;
+}
+
+/* ---------- ภาพโหลดแบบ fade ---------- */
+img.sc-img {
+  opacity: 0;
+  transition: opacity .5s ease, transform .7s var(--sc-ease-out);
+}
+
+img.sc-img.is-loaded {
+  opacity: 1;
+}
+
+/* ---------- เปลี่ยนธีมแบบนุ่ม ---------- */
+html.sc-theme-fade,
+html.sc-theme-fade *,
+html.sc-theme-fade *::before,
+html.sc-theme-fade *::after {
+  transition: background-color .45s ease, color .45s ease, border-color .45s ease, fill .45s ease !important;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+
+  /* ---------- Ambient: blob พื้นหลังลอยช้า ๆ ---------- */
+  body::before {
+    animation: scDriftA 22s ease-in-out infinite alternate;
+  }
+
+  body::after {
+    animation: scDriftB 26s ease-in-out infinite alternate;
+  }
+
+  /* ---------- การเปลี่ยนหน้า: section จางเข้า แล้วลูก ๆ ไล่ขึ้นทีละชั้น ---------- */
+  body:not(.login-shell) main > section:not(.hidden) {
+    animation: scFade .35s ease both;
+  }
+
+  body:not(.login-shell) main > section:not(.hidden) .shadow-premium,
+  body:not(.login-shell) main > section:not(.hidden) .public-welcome-card,
+  body:not(.login-shell) main > section:not(.hidden) .public-section-shell {
+    animation: none;
+  }
+
+  body:not(.login-shell) main > section.sc-entering > * {
+    animation: scRise .62s var(--sc-ease-out) both !important;
+    animation-delay: calc(var(--sc-c, 0) * 70ms) !important;
+  }
+
+  /* ---------- รายการที่ render แบบ dynamic ---------- */
+  .sc-stagger {
+    animation: scRise .55s var(--sc-ease-out) both !important;
+    animation-delay: calc(var(--sc-i, 0) * 45ms) !important;
+  }
+
+  tr.sc-stagger {
+    animation-name: scSlideIn !important;
+  }
+
+  #student-chat-list > .sc-stagger.items-end,
+  #admin-chat-list > .sc-stagger.items-end {
+    animation-name: scBubbleRight !important;
+    transform-origin: bottom right;
+  }
+
+  #student-chat-list > .sc-stagger.items-start,
+  #admin-chat-list > .sc-stagger.items-start {
+    animation-name: scBubbleLeft !important;
+    transform-origin: bottom left;
+  }
+
+  /* ---------- Hero banner: gradient ไหล + ข้อความไล่ขึ้น ---------- */
+  .bg-gradient-school {
+    background-size: 220% 220% !important;
+    animation: scHeroShift 14s ease-in-out infinite;
+  }
+
+  .bg-gradient-school > .relative.z-10 > * {
+    animation: scRise .75s var(--sc-ease-out) both;
+  }
+
+  .bg-gradient-school > .relative.z-10 > *:nth-child(2) { animation-delay: .08s; }
+  .bg-gradient-school > .relative.z-10 > *:nth-child(3) { animation-delay: .16s; }
+
+  #view-student-report .bg-gradient-school > i {
+    animation: scBob 3.2s ease-in-out infinite;
+  }
+
+  /* ---------- หัวข้อหน้า ---------- */
+  #page-header-title.sc-title-in {
+    animation: scTitleIn .5s var(--sc-ease-out);
+  }
+
+  /* ---------- ไอคอนสถานะ ---------- */
+  .status-active-pulse {
+    display: inline-block;
+    animation: scSpin 2.4s linear infinite;
+  }
+
+  .public-status.working i {
+    animation: scSpin 2s linear infinite;
+  }
+
+  .public-status.pending i {
+    animation: scTick 2.4s ease-in-out infinite;
+  }
+
+  /* ---------- พื้นที่อัปโหลด ---------- */
+  .upload-zone > i:first-child {
+    transition: transform .4s var(--sc-ease-spring), color .3s ease;
+  }
+
+  .upload-zone:hover > i:first-child {
+    animation: scBob 1.2s ease-in-out infinite;
+  }
+
+  .upload-zone.ring-2 {
+    transform: scale(1.015);
+    border-color: #f1c644 !important;
+  }
+
+  /* ---------- Empty state ---------- */
+  .public-empty-state i,
+  #student-track-list > div > i.fa-clock-rotate-left {
+    animation: scBob 3.5s ease-in-out infinite;
+  }
+
+  /* ---------- ลิงก์สำคัญ ---------- */
+  #student-links-container a i {
+    transition: transform .35s var(--sc-ease-spring);
+  }
+
+  #student-links-container a:hover i {
+    transform: translate(3px, -3px);
+  }
+
+  /* ---------- เมนู ---------- */
+  #sidebar .sidebar-link > i {
+    transition: transform .35s var(--sc-ease-spring), color .25s ease;
+  }
+
+  #sidebar .sidebar-link:hover > i {
+    transform: translateY(-2px) scale(1.12);
+  }
+
+  #sidebar .sidebar-link.sc-pop {
+    animation: scPop .5s var(--sc-ease-spring);
+  }
+
+  /* ---------- หน้า Login ---------- */
+  body.login-shell .login-topbar {
+    animation: scFadeDown .7s var(--sc-ease-out) both;
+  }
+
+  body.login-shell .login-panel {
+    animation: scFromLeft .85s .08s var(--sc-ease-out) both;
+  }
+
+  body.login-shell .login-showcase {
+    animation: scFromRight .95s .16s var(--sc-ease-out) both;
+  }
+
+  body.login-shell .login-panel-heading > * {
+    animation: scRise .7s var(--sc-ease-out) both;
+  }
+
+  body.login-shell .login-panel-heading > *:nth-child(1) { animation-delay: .28s; }
+  body.login-shell .login-panel-heading > *:nth-child(2) { animation-delay: .35s; }
+  body.login-shell .login-panel-heading > *:nth-child(3) { animation-delay: .42s; }
+
+  body.login-shell .showcase-caption > * {
+    animation: scRise .8s var(--sc-ease-out) both;
+  }
+
+  body.login-shell .showcase-caption > *:nth-child(1) { animation-delay: .5s; }
+  body.login-shell .showcase-caption > *:nth-child(2) { animation-delay: .6s; }
+  body.login-shell .showcase-caption > *:nth-child(3) { animation-delay: .7s; }
+
+  body.login-shell .showcase-feature {
+    animation: scRise .8s .85s var(--sc-ease-out) both, scFloat 6s 1.7s ease-in-out infinite;
+  }
+
+  body.login-shell .showcase-feature.feature-community {
+    animation: scRise .8s 1s var(--sc-ease-out) both, scFloat 6.5s 2.2s ease-in-out infinite;
+  }
+
+  body.login-shell .showcase-sun {
+    animation: scBreath 7s ease-in-out infinite;
+  }
+
+  body.login-shell .showcase-orbit-one {
+    animation: scOrbitA 16s ease-in-out infinite alternate;
+  }
+
+  body.login-shell .showcase-orbit-two {
+    animation: scOrbitB 20s ease-in-out infinite alternate;
+  }
+
+  body.login-shell .showcase-campus {
+    animation: scCampus 9s ease-in-out infinite;
+  }
+
+  body.login-shell .campus-windows i:nth-child(3n+1) { animation: scWindow 5s .4s ease-in-out infinite; }
+  body.login-shell .campus-windows i:nth-child(3n+2) { animation: scWindow 6s 1.8s ease-in-out infinite; }
+  body.login-shell .campus-windows i:nth-child(4n)   { animation: scWindow 7s 3s ease-in-out infinite; }
+
+  body.login-shell #view-login form:not(.hidden) {
+    animation: scFormIn .45s var(--sc-ease-out) both;
+  }
+
+  body.login-shell #login-error.sc-shake {
+    animation: scShake .45s ease;
+  }
+
+  /* ---------- เมนูมือถือ: รายการไล่ลงมา ---------- */
+  @media (max-width: 768px) {
+    body:not(.login-shell) #sidebar.is-menu-open nav .sidebar-link {
+      animation: scRise .4s var(--sc-ease-out) both;
+      animation-delay: calc(var(--sc-n, 0) * 28ms + 60ms);
+    }
+  }
+}
+
+/* ---------- การ์ด: ยกตัว + ไฟส่องตามเมาส์ (เฉพาะเดสก์ท็อป) ---------- */
+.sc-lift {
+  position: relative;
+  isolation: isolate;
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .sc-lift {
+    transition: transform .4s var(--sc-ease-out), box-shadow .4s ease, border-color .3s ease !important;
+  }
+
+  body:not(.login-shell) main .sc-lift:hover {
+    transform: translateY(-4px) !important;
+    border-color: rgba(241, 198, 68, .55) !important;
+    box-shadow: 0 22px 44px -24px rgba(16, 37, 77, .4), 0 6px 16px rgba(16, 37, 77, .06) !important;
+  }
+
+  .sc-lift::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    background: radial-gradient(380px circle at var(--mx, 50%) var(--my, 50%), rgba(241, 198, 68, .14), transparent 45%);
+    transition: opacity .35s ease;
+  }
+
+  .sc-lift:hover::after {
+    opacity: 1;
+  }
+
+  .sc-lift img {
+    transition: transform .8s var(--sc-ease-out), opacity .5s ease;
+  }
+
+  .sc-lift:hover img {
+    transform: scale(1.06);
+  }
+
+  .sc-lift:hover > div:first-child > i,
+  .sc-lift:hover .public-welcome-icon i {
+    animation: scWiggle .6s ease;
+  }
+
+  /* ปุ่ม login: แสงวิ่งผ่าน */
+  body.login-shell .login-panel form button[type="submit"]::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -60%;
+    width: 40%;
+    height: 100%;
+    pointer-events: none;
+    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .3), transparent);
+    transform: skewX(-18deg);
+    transition: left .75s var(--sc-ease-out);
+  }
+
+  body.login-shell .login-panel form button[type="submit"]:hover::after {
+    left: 125%;
+  }
+}
+
+/* ---------- Keyframes ---------- */
+@keyframes scFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes scRise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes scSlideIn { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
+@keyframes scFadeDown { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: none; } }
+@keyframes scFromLeft { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+@keyframes scFromRight { from { opacity: 0; transform: translateX(28px) scale(.985); } to { opacity: 1; transform: none; } }
+@keyframes scFormIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes scBubbleRight { from { opacity: 0; transform: translate(10px, 8px) scale(.92); } to { opacity: 1; transform: none; } }
+@keyframes scBubbleLeft { from { opacity: 0; transform: translate(-10px, 8px) scale(.92); } to { opacity: 1; transform: none; } }
+@keyframes scTitleIn { from { opacity: 0; transform: translateY(6px); filter: blur(3px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes scRipple { to { opacity: 0; transform: scale(1); } }
+@keyframes scToastTimer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@keyframes scToastOut { to { opacity: 0; transform: translateX(40px) scale(.95); } }
+@keyframes scSpin { to { transform: rotate(360deg); } }
+@keyframes scTick { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-12deg); } }
+@keyframes scBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes scWiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-10deg) scale(1.1); } 60% { transform: rotate(8deg) scale(1.1); } }
+@keyframes scPop { 0% { transform: scale(.94); } 60% { transform: scale(1.04); } 100% { transform: scale(1); } }
+@keyframes scShake { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+@keyframes scHeroShift { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+@keyframes scFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+@keyframes scBreath { 0%, 100% { transform: scale(1); opacity: .92; } 50% { transform: scale(1.07); opacity: 1; } }
+@keyframes scOrbitA { from { transform: rotate(-24deg); } to { transform: rotate(-15deg) scale(1.03); } }
+@keyframes scOrbitB { from { transform: rotate(-24deg); } to { transform: rotate(-32deg) scale(1.04); } }
+@keyframes scCampus {
+  0%, 100% { transform: perspective(900px) rotateY(-12deg) rotateX(3deg) rotate(-5deg) translateY(0); }
+  50% { transform: perspective(900px) rotateY(-9deg) rotateX(3deg) rotate(-5deg) translateY(-8px); }
+}
+@keyframes scWindow {
+  0%, 100% { box-shadow: inset 0 0 12px rgba(226, 243, 235, .16); }
+  45%, 55% { box-shadow: inset 0 0 18px rgba(255, 220, 120, .75), 0 0 14px rgba(255, 210, 100, .35); }
+}
+@keyframes scDriftA { from { transform: translate(0, 0) scale(1); } to { transform: translate(-60px, 50px) scale(1.15); } }
+@keyframes scDriftB { from { transform: translate(0, 0) scale(1); } to { transform: translate(70px, -40px) scale(1.1); } }
