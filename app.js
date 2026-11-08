@@ -89,7 +89,7 @@ async function refreshRemoteUsers() {
 async function restoreSupabaseSession() {
   if (!isSupabaseReady()) return false;
   try {
-    const { data: sessionData, error: sessionError } = await sb.auth.getSession();
+    const { data: sessionData, error: sessionError } = await withTimeout(sb.auth.getSession(), 8000);
     if (sessionError) throw sessionError;
     const session = sessionData?.session;
 
@@ -100,11 +100,11 @@ async function restoreSupabaseSession() {
       return false;
     }
 
-    const { data: profile, error: profileError } = await sb
+    const { data: profile, error: profileError } = await withTimeout(sb
       .from('profiles')
       .select('id,student_id,name,role,classroom,email')
       .eq('id', session.user.id)
-      .maybeSingle();
+      .maybeSingle(), 8000);
 
     if (profileError) throw profileError;
     if (!profile || !hydrateCurrentUserFromSession(session, profile)) {
@@ -490,11 +490,25 @@ function toggleLoginRegister(type) {
   }
 }
 
+// Thai keyboards can type ๐-๙; convert them (and stray spaces) to plain digits.
+function normalizeDigits(value) {
+  return String(value || '').replace(/[\u0E50-\u0E59]/g, d => String(d.charCodeAt(0) - 0x0E50)).replace(/\s+/g, '');
+}
+
+// Never let a stalled network/auth call leave the screen frozen.
+function withTimeout(promise, ms, message = 'TIMEOUT') {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => { const err = new Error(message); err.code = 'TIMEOUT'; reject(err); }, ms);
+  });
+  return Promise.race([Promise.resolve(promise), timeout]).finally(() => clearTimeout(timer));
+}
+
 function schoolAuthEmail(identifier) {
   // Internal Auth identifier only. Users NEVER type or see this value.
   // Supabase Auth requires an email-shaped identifier for password auth,
   // so the website keeps the real login UI as Student ID + Password.
-  const clean = String(identifier).trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+  const clean = normalizeDigits(identifier).trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
   return `account-${clean}@school-auth.invalid`;
 }
 
@@ -509,13 +523,27 @@ let loginSubmissionActive = false;
 async function submitLogin(role) {
   if (loginSubmissionActive) return;
   loginSubmissionActive = true;
+  const button = document.querySelector(`#form-login-${role} button[type="submit"]`);
+  const oldHtml = button?.innerHTML;
+  if (button) {
+    button.disabled = true;
+    button.classList.add('sc-busy');
+    button.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>กำลังเข้าสู่ระบบ...';
+  }
   try {
-    await performLogin(role);
+    await withTimeout(performLogin(role), 25000);
   } catch (error) {
     console.error('Login request failed:', error);
-    showLoginError('เชื่อมต่อระบบไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
+    showLoginError(error?.code === 'TIMEOUT'
+      ? 'ระบบตอบสนองช้า กรุณาลองใหม่อีกครั้ง (ถ้ายังไม่ได้ ลองปิดแล้วเปิดเบราว์เซอร์ใหม่)'
+      : 'เชื่อมต่อระบบไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
   } finally {
     loginSubmissionActive = false;
+    if (button) {
+      button.disabled = false;
+      button.classList.remove('sc-busy');
+      if (oldHtml) button.innerHTML = oldHtml;
+    }
   }
 }
 
@@ -539,7 +567,7 @@ async function performLogin(role) {
   }
 
   if (role === 'student') {
-    const studentId = document.getElementById('login-student-id').value.trim();
+    const studentId = normalizeDigits(document.getElementById('login-student-id').value);
     const studentPass = document.getElementById('login-student-pass').value;
 
     if (!studentId || !studentPass) {
@@ -547,10 +575,10 @@ async function performLogin(role) {
       return;
     }
 
-    const { data, error } = await sb.auth.signInWithPassword({
+    const { data, error } = await withTimeout(sb.auth.signInWithPassword({
       email: schoolAuthEmail(studentId),
       password: studentPass
-    });
+    }), 15000);
 
     if (error || !data.user) {
       showLoginError(error?.message?.toLowerCase().includes('rate limit') ? 'ระบบจำกัดการเข้าสู่ระบบชั่วคราว กรุณารอสักครู่แล้วลองใหม่' : 'รหัสนักเรียนหรือรหัสผ่านไม่ถูกต้อง');
@@ -586,10 +614,10 @@ async function performLogin(role) {
       return;
     }
 
-    const { data, error } = await sb.auth.signInWithPassword({
+    const { data, error } = await withTimeout(sb.auth.signInWithPassword({
       email: schoolAuthEmail(username),
       password: pass
-    });
+    }), 15000);
 
     if (error || !data.user) {
       showLoginError(error?.message?.toLowerCase().includes('rate limit') ? 'ระบบจำกัดการเข้าสู่ระบบชั่วคราว กรุณารอสักครู่แล้วลองใหม่' : 'ชื่อผู้ใช้ หรือรหัสผ่านไม่ถูกต้อง');
@@ -702,7 +730,7 @@ async function submitRegister() {
   }
 
   const name = document.getElementById('register-student-name')?.value.trim();
-  const studentId = document.getElementById('register-student-id')?.value.trim();
+  const studentId = normalizeDigits(document.getElementById('register-student-id')?.value);
   const classroom = document.getElementById('register-student-class')?.value.trim();
   const password = document.getElementById('register-student-pass')?.value || '';
   const confirm = document.getElementById('register-student-pass-confirm')?.value || '';
@@ -2646,8 +2674,16 @@ if (document.readyState === 'loading') {
   /* ---------- 9. กล่อง error หน้า login สั่น ---------- */
   const loginError = document.getElementById('login-error');
   if (loginError && !reduceMotion) {
-    const shake = () => { if (!loginError.classList.contains('hidden')) replayClass(loginError, 'sc-shake'); };
-    new MutationObserver(shake).observe(loginError, { attributes: true, attributeFilter: ['class'], childList: true, characterData: true, subtree: true });
+    // The observer must stop watching while it changes the box's own class,
+    // otherwise every shake triggers another shake and the page freezes.
+    const shakeOpts = { attributes: true, attributeFilter: ['class'], childList: true, characterData: true, subtree: true };
+    const shakeObserver = new MutationObserver(() => {
+      if (loginError.classList.contains('hidden')) return;
+      shakeObserver.disconnect();
+      replayClass(loginError, 'sc-shake');
+      shakeObserver.observe(loginError, shakeOpts);
+    });
+    shakeObserver.observe(loginError, shakeOpts);
   }
 
   /* ---------- 10. ลำดับเมนู (ใช้ไล่ animation ในเมนูมือถือ) ---------- */
